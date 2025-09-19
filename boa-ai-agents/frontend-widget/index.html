@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Credit Pre-Approval - Bank of Anthos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid #333333;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #a1a1a1;
+            font-weight: 400;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: #00d632;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 24px;
+            color: #000000;
+        }
+
+        .demo-section {
+            margin-bottom: 24px;
+        }
+
+        .ai-demo {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .ai-demo h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .ai-demo p {
+            color: #a1a1a1;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .user-profile {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .profile-card {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .profile-card:hover {
+            border-color: #00d632;
+            transform: translateY(-2px);
+        }
+
+        .profile-card h3 {
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-icon {
+            width: 20px;
+            height: 20px;
+            color: #00d632;
+        }
+
+        .spending-chart {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .spending-item {
+            background: #333333;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 0.85em;
+            border: 1px solid #555555;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .spending-item i {
+            color: #00d632;
+            width: 12px;
+        }
+
+        .ai-analysis {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid #00d632;
+        }
+
+        .ai-analysis h3 {
+            color: #ffffff;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .credit-offers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .offer-card {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .offer-card:hover {
+            border-color: #00d632;
+            transform: translateY(-2px);
+        }
+
+        .offer-card.gold {
+            border-color: #00d632;
+            background: #1a1a1a;
+        }
+
+        .offer-card.silver {
+            border-color: #666666;
+            background: #1a1a1a;
+        }
+
+        .tier-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .tier-gold {
+            background: #00d632;
+            color: #000000;
+        }
+
+        .tier-silver {
+            background: #666666;
+            color: #ffffff;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .feature-list li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+            width: 20px;
+        }
+
+        .btn {
+            background: #00d632;
+            color: #000000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .btn:hover {
+            background: #00c42e;
+            transform: translateY(-1px);
+        }
+
+        .btn-demo {
+            background: #00d632;
+            color: #000000;
+            margin: 24px auto;
+            padding: 16px 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            max-width: 300px;
+        }
+
+        .btn-demo:hover {
+            background: #00c42e;
+            transform: translateY(-2px);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin: 4px 0;
+            background: #333333;
+            border: 1px solid #555555;
+        }
+
+        .status-excellent {
+            background: #333333;
+            color: #00d632;
+            border-color: #00d632;
+        }
+
+        .status-good {
+            background: #333333;
+            color: #ffa726;
+            border-color: #ffa726;
+        }
+
+        .explanation {
+            background: #333333;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 15px 0;
+            border-left: 4px solid #00d632;
+        }
+
+        .explanation p {
+            color: #a1a1a1;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .explanation em {
+            color: #ffffff;
+            font-style: normal;
+        }
+
+        .tech-stack {
+            background: #263238;
+            color: white;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 10px;
+        }
+
+        .tech-stack h3 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .tech-item {
+            background: #37474f;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .user-profile {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .demo-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <h1>AI-Powered Credit Pre-Approval</h1>
+            <p>Get your personalized credit card offer in seconds</p>
+            <p>No credit check required • We analyze your spending patterns</p>
+        </div>
+
+        <div class="demo-section">
+            <div class="ai-demo">
+                <h2><i class="fas fa-credit-card card-icon"></i> Ready for Your Personalized Credit Card Offer?</h2>
+                <p><strong>No credit history needed!</strong> Our AI analyzes your past transactions to create a credit card perfectly tailored to your spending habits.</p>
+                
+                <div style="margin: 20px 0;">
+                    <h4><i class="fas fa-magic card-icon"></i> How It Works:</h4>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>Smart Analysis:</strong> We review your spending patterns and financial behavior</li>
+                        <li><strong>AI Personalization:</strong> Our AI designs cashback rewards for your favorite merchants</li>
+                        <li><strong>Instant Approval:</strong> Get your customized offer in seconds, not days</li>
+                        <li><strong>Fair Terms:</strong> Competitive rates based on your actual financial habits</li>
+                    </ul>
+                </div>
+
+                <button class="btn btn-demo" onclick="showAIDemo()">
+                    <i class="fas fa-magic"></i>
+                    Get My Personalized Offer
+                </button>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>AI agents analyzing account data...</p>
+            </div>
+
+            <div id="demo-results" style="display: none;">
+                <div class="user-profile">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-chart-line card-icon"></i> Account Analysis</h3>
+                        <div class="status-indicator status-excellent">
+                            <span>●</span> Excellent Financial Health
+                        </div>
+                        <div style="margin: 15px 0; color: #a1a1a1;">
+                            <strong>Monthly Income:</strong> $3,200<br>
+                            <strong>Average Balance:</strong> $1,250<br>
+                            <strong>NSF Events:</strong> 0 (last 6 months)<br>
+                            <strong>Payment History:</strong> 100% on-time
+                        </div>
+                        
+                        <h4><i class="fas fa-credit-card card-icon"></i> Spending Categories</h4>
+                        <div class="spending-chart">
+                            <!-- Real spending categories will be loaded here -->
+                            <div class="spending-item">
+                                <i class="fas fa-spinner fa-spin"></i> Loading your spending patterns...
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; text-align: center;">
+                            <a href="/merchants" style="color: #00d632; text-decoration: none; font-size: 0.9em; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-store"></i> View Merchant Directory
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="profile-card">
+                        <h3><i class="fas fa-brain card-icon"></i> AI Risk Assessment</h3>
+                        <div style="font-size: 1.5em; color: #00d632; margin: 10px 0;">
+                            Credit Score: <strong>742</strong>
+                        </div>
+                        <div class="tier-badge tier-gold"><i class="fas fa-star"></i> GOLD TIER</div>
+                        
+                        <h4><i class="fas fa-chart-bar card-icon"></i> Risk Factors Analysis:</h4>
+                        <div style="margin: 10px 0;">
+                            <div class="status-indicator status-excellent"><i class="fas fa-check-circle"></i> Income Stability: 85%</div>
+                            <div class="status-indicator status-excellent"><i class="fas fa-check-circle"></i> Payment Reliability: 100%</div>
+                            <div class="status-indicator status-good"><i class="fas fa-exclamation-triangle"></i> Expense Ratio: 75%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-analysis">
+                    <h3><i class="fas fa-chart-line card-icon"></i> Transaction History Assessment</h3>
+                    <div class="explanation">
+                        <p><em><i class="fas fa-spinner fa-spin"></i> AI is analyzing your financial profile...</em></p>
+                    </div>
+                </div>
+
+                <h2><i class="fas fa-credit-card"></i> Personalized Credit Offers</h2>
+                <div class="credit-offers">
+                    <!-- Real credit offers will be loaded here dynamically from backend -->
+                    <div class="offer-card" style="text-align: center; padding: 40px;">
+                        <div style="font-size: 1.2em; color: #a1a1a1; margin-bottom: 20px;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading personalized credit offers...
+                        </div>
+                        <p style="color: #666; font-size: 0.9em;">
+                            AI is analyzing your spending patterns to create tailored financial products
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function showAIDemo() {
+            // Hide the demo button and show loading
+            document.querySelector('.btn-demo').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                // Call the REAL AI API endpoint
+                const response = await fetch('/api/real-preapproval?username=testuser');
+                const data = await response.json();
+                
+                if (data.ai_assessment) {
+                    // Update the display with REAL AI data
+                    updateDemoResults(data);
+                } else {
+                    console.error('No AI assessment data received');
+                    showStaticDemo(); // Fallback to static demo
+                }
+            } catch (error) {
+                console.error('Error fetching AI data:', error);
+                showStaticDemo(); // Fallback to static demo
+            }
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('demo-results').style.display = 'block';
+            
+            // Scroll to results
+            document.getElementById('demo-results').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+        
+        function updateDemoResults(data) {
+            const ai = data.ai_assessment;
+            
+            // Update credit score
+            document.querySelector('.profile-card:nth-child(2) div[style*="font-size: 2em"]').innerHTML = 
+                `Credit Score: <strong>${ai.score}</strong>`;
+            
+            // Update tier badge
+            const tierBadge = document.querySelector('.tier-badge.tier-gold');
+            tierBadge.textContent = `${ai.tier.toUpperCase()} TIER`;
+            tierBadge.className = `tier-badge tier-${ai.tier.toLowerCase()}`;
+            
+            // Update AI explanation with REAL Gemini response
+            const explanationDiv = document.querySelector('.explanation p');
+            explanationDiv.innerHTML = `<em>"${ai.explanation}"</em>`;
+            
+            // Add AI generation indicator
+            const aiHeader = document.querySelector('.ai-analysis h3');
+            const timestamp = ai.analysis_time || new Date().toLocaleString();
+            const aiGenerated = ai.ai_generated ? '✅ REAL AI' : '⚠️ DEMO MODE';
+            aiHeader.innerHTML = `<i class="fas fa-chart-line card-icon"></i> Transaction History Assessment <small style="color: #666;">(${aiGenerated} - ${timestamp})</small>`;
+            
+            // Update spending data if available
+            if (data.analysis && data.analysis.monthly_income) {
+                const profileCard = document.querySelector('.profile-card:first-child div[style*="margin: 15px 0"]');
+                profileCard.innerHTML = `
+                    <strong>Monthly Income:</strong> $${data.analysis.monthly_income.toFixed(0)}<br>
+                    <strong>Current Balance:</strong> $${data.balance ? data.balance.toFixed(0) : '1,250'}<br>
+                    <strong>Transactions:</strong> ${data.transaction_count || 0} (last 30 days)<br>
+                    <strong>Payment History:</strong> ${(data.analysis.payment_reliability * 100).toFixed(0)}% reliable
+                `;
+            }
+            
+            // Update spending categories with REAL data
+            if (data.analysis && data.analysis.spending_categories) {
+                updateSpendingChart(data.analysis.spending_categories);
+            }
+            
+            // Update lifestyle insights
+            if (data.analysis && data.analysis.lifestyle_insights) {
+                updateLifestyleInsights(data.analysis.lifestyle_insights);
+            }
+            
+            // Update personalized credit card offers
+            if (data.credit_offers && data.credit_offers.length > 0) {
+                console.log('Updating credit offers:', data.credit_offers);
+                updateCreditCardOffers(data.credit_offers);
+            } else {
+                console.log('No credit offers found in data:', data);
+            }
+        }
+        
+        function updateSpendingChart(spendingCategories) {
+            console.log('updateSpendingChart called with:', spendingCategories);
+            const spendingChart = document.querySelector('.spending-chart');
+            if (!spendingChart) {
+                console.error('Spending chart container not found!');
+                return;
+            }
+            
+            // Clear existing spending items
+            spendingChart.innerHTML = '';
+            console.log('Spending chart cleared');
+            
+            // Get icon mapping for categories
+            const categoryIcons = {
+                'Coffee & Cafes': 'fas fa-coffee',
+                'Groceries': 'fas fa-shopping-cart', 
+                'Gas & Fuel': 'fas fa-gas-pump',
+                'Utilities': 'fas fa-home',
+                'Restaurants': 'fas fa-utensils',
+                'Fast Casual': 'fas fa-hamburger',
+                'Fine Dining': 'fas fa-wine-glass',
+                'Online Retail': 'fas fa-laptop',
+                'Retail': 'fas fa-shopping-bag',
+                'Streaming Services': 'fas fa-play',
+                'Music Streaming': 'fas fa-music',
+                'Rideshare': 'fas fa-car',
+                'Pharmacy & Health': 'fas fa-pills',
+                'Unknown': 'fas fa-question-circle'
+            };
+            
+            // Sort categories by spending amount (descending) and take top 5
+            const sortedCategories = Object.entries(spendingCategories)
+                .filter(([category, data]) => data.total > 0)
+                .sort(([,a], [,b]) => b.total - a.total)
+                .slice(0, 5);
+            
+            console.log('Sorted categories:', sortedCategories);
+            
+            if (sortedCategories.length === 0) {
+                console.warn('No spending categories with data > 0 found');
+                spendingChart.innerHTML = '<div class="spending-item"><i class="fas fa-info-circle"></i> No spending data available</div>';
+                return;
+            }
+            
+            sortedCategories.forEach(([category, data]) => {
+                const icon = categoryIcons[category] || 'fas fa-credit-card';
+                const spendingItem = document.createElement('div');
+                spendingItem.className = 'spending-item';
+                spendingItem.innerHTML = `
+                    <i class="${icon}"></i> 
+                    ${category}: $${data.total.toFixed(0)}/month
+                `;
+                spendingChart.appendChild(spendingItem);
+            });
+            
+            // If no spending data, show a message
+            if (sortedCategories.length === 0) {
+                spendingChart.innerHTML = '<div class="spending-item"><i class="fas fa-info-circle"></i> No spending data available</div>';
+            }
+        }
+        
+        function updateLifestyleInsights(insights) {
+            // Find where to display lifestyle insights - could be in financial health section
+            const healthSection = document.querySelector('.status-indicator');
+            if (healthSection && insights.length > 0) {
+                // Add insights below the health indicator
+                let insightsDiv = document.querySelector('.lifestyle-insights');
+                if (!insightsDiv) {
+                    insightsDiv = document.createElement('div');
+                    insightsDiv.className = 'lifestyle-insights';
+                    insightsDiv.style.cssText = 'margin-top: 12px; font-size: 0.85em; color: #a1a1a1;';
+                    healthSection.parentNode.appendChild(insightsDiv);
+                }
+                
+                insightsDiv.innerHTML = `
+                    <strong style="color: #00d632;">💡 Spending Insights:</strong><br>
+                    ${insights.map(insight => `• ${insight}`).join('<br>')}
+                `;
+            }
+        }
+        
+        function updateCreditCardOffers(offers) {
+            console.log('updateCreditCardOffers called with:', offers);
+            const creditOffersContainer = document.querySelector('.credit-offers');
+            if (!creditOffersContainer) {
+                console.error('Credit offers container not found!');
+                return;
+            }
+            
+            console.log('Clearing existing offers...');
+            // Clear existing offers
+            creditOffersContainer.innerHTML = '';
+            
+            console.log('Creating new offer cards...');
+            offers.forEach((offer, index) => {
+                console.log(`Creating offer card ${index}:`, offer);
+                const offerCard = createOfferCard(offer);
+                creditOffersContainer.appendChild(offerCard);
+            });
+            console.log('Credit offers updated successfully!');
+        }
+        
+        function createOfferCard(offer) {
+            const card = document.createElement('div');
+            card.className = 'offer-card gold';
+            
+            const aiDesigned = offer.ai_designed ? '<i class="fas fa-robot"></i> AI-Designed' : '<i class="fas fa-credit-card"></i> Standard';
+            const cardName = offer.name || 'Bank of Anthos Credit Card';
+            
+            // Format fees and terms
+            const limitRange = `$${offer.limit_range[0].toLocaleString()} - $${offer.limit_range[1].toLocaleString()}`;
+            const aprRange = `${offer.apr_range[0]}% - ${offer.apr_range[1]}%`;
+            const annualFee = offer.annual_fee ? `$${offer.annual_fee}` : 'No fee';
+            
+            // Build comprehensive fee structure
+            const feeStructure = `
+                <div style="background: #333333; border-radius: 8px; padding: 12px; margin: 12px 0;">
+                    <h5 style="color: #00d632; margin: 0 0 8px 0; font-size: 0.9em;"><i class="fas fa-file-invoice-dollar"></i> Complete Fee Structure</h5>
+                    <div style="font-size: 0.8em; color: #a1a1a1; line-height: 1.4;">
+                        <strong>Annual Fee:</strong> ${annualFee}<br>
+                        ${offer.foreign_transaction_fee ? `<strong>Foreign Transactions:</strong> ${offer.foreign_transaction_fee}<br>` : ''}
+                        ${offer.late_payment_fee ? `<strong>Late Payment:</strong> ${offer.late_payment_fee}<br>` : ''}
+                        ${offer.balance_transfer_fee ? `<strong>Balance Transfer:</strong> ${offer.balance_transfer_fee}<br>` : ''}
+                        ${offer.cash_advance_fee ? `<strong>Cash Advance:</strong> ${offer.cash_advance_fee}<br>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Build lifestyle benefits
+            const lifestyleBenefits = offer.lifestyle_benefits ? `
+                <div style="margin: 12px 0;">
+                    <h5 style="color: #00d632; margin: 0 0 8px 0; font-size: 0.9em;"><i class="fas fa-star"></i> Lifestyle Benefits</h5>
+                    <ul style="font-size: 0.8em; color: #a1a1a1; margin: 0; padding-left: 16px; line-height: 1.4;">
+                        ${offer.lifestyle_benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : '';
+            
+            card.innerHTML = `
+                <div class="tier-badge tier-gold">${aiDesigned}</div>
+                <h3 style="color: #ffffff; margin-bottom: 8px; font-size: 1.1em;">${cardName}</h3>
+                <div style="margin: 15px 0; color: #a1a1a1; font-size: 0.85em;">
+                    <strong>Credit Limit:</strong> ${limitRange}<br>
+                    <strong>APR:</strong> ${aprRange}
+                </div>
+                
+                ${feeStructure}
+                
+                <div style="background: #1a1a1a; border-radius: 8px; padding: 12px; margin: 12px 0; border-left: 4px solid #00d632;">
+                    <h5 style="color: #00d632; margin: 0 0 8px 0; font-size: 0.9em;"><i class="fas fa-percentage"></i> Cashback Rewards</h5>
+                    <div style="font-size: 0.8em; color: #a1a1a1; line-height: 1.4;">
+                        ${offer.cashback_primary ? `<strong>Primary:</strong> ${offer.cashback_primary}<br>` : ''}
+                        ${offer.cashback_secondary ? `<strong>Secondary:</strong> ${offer.cashback_secondary}<br>` : ''}
+                        ${offer.cashback_general ? `<strong>General:</strong> ${offer.cashback_general}` : ''}
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #00d632, #00c42e); color: #000000; border-radius: 8px; padding: 12px; margin: 12px 0; font-weight: 600; text-align: center; font-size: 0.85em;">
+                    <i class="fas fa-gift"></i> ${offer.intro_offer || 'Welcome bonus available'}
+                </div>
+                
+                <div style="margin: 12px 0;">
+                    <h5 style="color: #00d632; margin: 0 0 8px 0; font-size: 0.9em;"><i class="fas fa-crown"></i> Personalized Perks</h5>
+                    <ul style="font-size: 0.8em; color: #a1a1a1; margin: 0; padding-left: 16px; line-height: 1.4;">
+                        ${(offer.perks || []).map(perk => `<li>${perk}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                ${lifestyleBenefits}
+                
+                ${offer.competitive_edge ? `
+                <div style="background: #333333; border-radius: 8px; padding: 10px; margin: 12px 0; border: 1px solid #00d632;">
+                    <div style="font-size: 0.75em; color: #00d632; font-weight: 600; text-align: center;">
+                        <i class="fas fa-trophy"></i> ${offer.competitive_edge}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <button class="btn" onclick="showApplicationForm('${cardName}')" style="width: 100%; margin-top: 16px; font-size: 0.9em;">
+                    <i class="fas fa-credit-card"></i> Apply Now
+                </button>
+            `;
+            
+            return card;
+        }
+        
+        function showStaticDemo() {
+            // Original static demo as fallback
+            // (keep existing static content)
+        }
+
+        function showApplicationForm(cardName = '') {
+            const message = cardName ? 
+                `🎉 Ready to apply for the ${cardName}? In a real implementation, this would redirect to the Bank of Anthos application form, pre-filled with your AI-generated personalized offer details!` :
+                '🎉 In a real implementation, this would redirect to the Bank of Anthos application form, pre-filled with the AI-generated offer details!';
+            alert(message);
+        }
+
+        // Load real data on page load
+        window.addEventListener('load', async () => {
+            try {
+                // Load all real data immediately when page loads
+                console.log('Loading real data on page load...');
+                const response = await fetch('/api/real-preapproval?username=testuser');
+                const data = await response.json();
+                
+                console.log('Full data loaded:', data);
+                
+                // Update AI explanation
+                if (data.ai_assessment && data.ai_assessment.explanation) {
+                    const explanationDiv = document.querySelector('.explanation p');
+                    const timestamp = data.ai_assessment.analysis_time || new Date().toLocaleString();
+                    const aiGenerated = data.ai_assessment.ai_generated ? '✅ REAL AI' : '⚠️ DEMO MODE';
+                    
+                    explanationDiv.innerHTML = `<em>"${data.ai_assessment.explanation}"</em>`;
+                    
+                    // Update header with AI status
+                    const aiHeader = document.querySelector('.ai-analysis h3');
+                    aiHeader.innerHTML = `<i class="fas fa-chart-line card-icon"></i> Transaction History Assessment <small style="color: #666;">(${aiGenerated} - ${timestamp})</small>`;
+                }
+                
+                // Update spending data
+                if (data.analysis && data.analysis.spending_categories) {
+                    updateSpendingChart(data.analysis.spending_categories);
+                }
+                
+                // Update lifestyle insights
+                if (data.analysis && data.analysis.lifestyle_insights) {
+                    updateLifestyleInsights(data.analysis.lifestyle_insights);
+                }
+                
+                // Update credit offers
+                if (data.credit_offers && data.credit_offers.length > 0) {
+                    console.log('Credit offers loaded on page load:', data.credit_offers);
+                    updateCreditCardOffers(data.credit_offers);
+                } else {
+                    console.error('No credit offers found on page load');
+                    showFallbackOffers();
+                }
+                
+                // Update financial metrics
+                if (data.analysis && data.analysis.monthly_income) {
+                    const profileCard = document.querySelector('.profile-card:first-child div[style*="margin: 15px 0"]');
+                    if (profileCard) {
+                        profileCard.innerHTML = `
+                            <strong>Monthly Income:</strong> $${data.analysis.monthly_income.toFixed(0)}<br>
+                            <strong>Current Balance:</strong> $${data.balance ? data.balance.toFixed(0) : '6,534'}<br>
+                            <strong>Transactions:</strong> ${data.transaction_count || 0} (last 30 days)<br>
+                            <strong>Payment History:</strong> ${(data.analysis.payment_reliability * 100).toFixed(0)}% reliable
+                        `;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error loading real data on page load:', error);
+                showFallbackOffers();
+            }
+        });
+        
+        function showFallbackOffers() {
+            // Show a fallback offer if the API fails
+            const fallbackOffers = [{
+                name: 'Bank of Anthos Credit Card',
+                limit_range: [2000, 5000],
+                apr_range: [19.99, 24.99],
+                annual_fee: 0,
+                perks: ['1% cashback on all purchases', 'No annual fee', 'Mobile alerts'],
+                intro_offer: 'No intro offer at this time',
+                ai_designed: false
+            }];
+            updateCreditCardOffers(fallbackOffers);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: boa-agents-config
+  namespace: boa-agents
+  labels:
+    app: boa-agents
+    component: config
+data:
+  # MCP Server Configuration
+  MCP_API_KEY: "mcp-demo-key-123"
+  BALANCEREADER_URL: "http://balancereader.default:8080"
+  TRANSACTIONHISTORY_URL: "http://transactionhistory.default:8080"
+  USERSERVICE_URL: "http://userservice.default:8080"
+  CONTACTS_URL: "http://contacts.default:8080"
+  
+  # Service URLs
+  MCP_SERVER_URL: "http://boa-mcp:8080"
+  RISK_AGENT_URL: "http://risk-agent:8081"
+  TERMS_AGENT_URL: "http://terms-agent:8082"
+  
+  # Demo Configuration
+  DEMO_MODE: "true"
+  LOG_LEVEL: "INFO"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: boa-agents-secrets
+  namespace: boa-agents
+  labels:
+    app: boa-agents
+    component: secrets
+type: Opaque
+data:
+  # Base64 encoded Gemini API key - replace with actual key for production
+  # For demo purposes, using placeholder
+  GEMINI_API_KEY: ZGVtby1rZXk=  # "demo-key" in base64

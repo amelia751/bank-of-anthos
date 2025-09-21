@@ -304,6 +304,12 @@
             color: #ffa726;
             border-color: #ffa726;
         }
+        
+        .status-poor {
+            background: #333333;
+            color: #ff5722;
+            border-color: #ff5722;
+        }
 
         .explanation {
             background: #333333;
@@ -560,6 +566,11 @@
                 updateSpendingChart(data.analysis.spending_categories);
             }
             
+            // Update risk factors with REAL data
+            if (data.analysis) {
+                updateRiskFactors(data.analysis, ai);
+            }
+            
             // Update lifestyle insights
             if (data.analysis && data.analysis.lifestyle_insights) {
                 updateLifestyleInsights(data.analysis.lifestyle_insights);
@@ -652,6 +663,57 @@
                     <strong style="color: #00d632;">💡 Spending Insights:</strong><br>
                     ${insights.map(insight => `• ${insight}`).join('<br>')}
                 `;
+            }
+        }
+        
+        function updateRiskFactors(analysis, aiAssessment) {
+            console.log('updateRiskFactors called with:', analysis, aiAssessment);
+            
+            // Update credit score with real AI assessment
+            const creditScoreDiv = document.querySelector('.profile-card:nth-child(2) div[style*="font-size: 1.5em"]');
+            if (creditScoreDiv && aiAssessment) {
+                creditScoreDiv.innerHTML = `Credit Score: <strong>${aiAssessment.score}</strong>`;
+            }
+            
+            // Update tier badge
+            const tierBadge = document.querySelector('.tier-badge.tier-gold');
+            if (tierBadge && aiAssessment) {
+                tierBadge.innerHTML = `<i class="fas fa-star"></i> ${aiAssessment.tier.toUpperCase()} TIER`;
+                tierBadge.className = `tier-badge tier-${aiAssessment.tier.toLowerCase()}`;
+            }
+            
+            // Calculate real risk factors
+            const incomeStability = analysis.deposit_count >= 2 ? Math.min(95, 60 + (analysis.deposit_count * 10)) : 50;
+            const paymentReliability = Math.round(analysis.payment_reliability * 100);
+            const expenseRatio = Math.round(analysis.balance_management * 100);
+            
+            // Update risk factors with real data
+            const riskFactorsContainer = document.querySelector('.profile-card:nth-child(2) div[style*="margin: 10px 0"]');
+            if (riskFactorsContainer) {
+                riskFactorsContainer.innerHTML = `
+                    <div class="status-indicator ${incomeStability >= 80 ? 'status-excellent' : incomeStability >= 60 ? 'status-good' : 'status-poor'}">
+                        <i class="fas ${incomeStability >= 80 ? 'fa-check-circle' : incomeStability >= 60 ? 'fa-exclamation-triangle' : 'fa-times-circle'}"></i> 
+                        Income Stability: ${incomeStability}% 
+                        <small>(${analysis.deposit_count} income sources)</small>
+                    </div>
+                    <div class="status-indicator ${paymentReliability >= 90 ? 'status-excellent' : paymentReliability >= 70 ? 'status-good' : 'status-poor'}">
+                        <i class="fas ${paymentReliability >= 90 ? 'fa-check-circle' : paymentReliability >= 70 ? 'fa-exclamation-triangle' : 'fa-times-circle'}"></i> 
+                        Payment Reliability: ${paymentReliability}% 
+                        <small>(${analysis.payment_count} transactions)</small>
+                    </div>
+                    <div class="status-indicator ${expenseRatio >= 80 ? 'status-excellent' : expenseRatio >= 60 ? 'status-good' : 'status-poor'}">
+                        <i class="fas ${expenseRatio >= 80 ? 'fa-check-circle' : expenseRatio >= 60 ? 'fa-exclamation-triangle' : 'fa-times-circle'}"></i> 
+                        Balance Management: ${expenseRatio}% 
+                        <small>($${analysis.monthly_income ? Math.round(analysis.monthly_income) : 0}/month income)</small>
+                    </div>
+                `;
+                
+                console.log('Risk factors updated with real data:', {
+                    incomeStability,
+                    paymentReliability,
+                    expenseRatio,
+                    creditScore: aiAssessment?.score
+                });
             }
         }
         

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Risk Assessment Agent for Credit Pre-approval
-Analyzes checking account data to assess creditworthiness
+Analyzes checking account data to assess creditworthiness and make approval decisions
 """
 
 import json
@@ -14,6 +14,13 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from flask import Flask, jsonify, request
 import numpy as np
+
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    logging.warning("Google Generative AI not available - using rule-based decisions")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,11 +47,28 @@ class FinancialFeatures:
     category_spending: Dict[str, float]
 
 class RiskAnalyzer:
-    """Analyzes financial data to assess credit risk"""
+    """Analyzes financial data to assess credit risk and make approval decisions"""
     
     def __init__(self):
         self.mcp_url = os.getenv('MCP_SERVER_URL', 'http://boa-mcp:8080')
         self.mcp_api_key = os.getenv('MCP_API_KEY', 'mcp-demo-key-123')
+        
+        # Initialize Gemini for reasoning
+        if GEMINI_AVAILABLE:
+            api_key = os.getenv('GEMINI_API_KEY', 'demo-key')
+            if api_key and api_key != 'demo-key':
+                try:
+                    genai.configure(api_key=api_key)
+                    self.model = genai.GenerativeModel('gemini-1.5-flash')
+                    logger.info("✅ Gemini API initialized for risk reasoning")
+                except Exception as e:
+                    logger.warning(f"⚠️ Gemini API failed: {e}")
+                    self.model = None
+            else:
+                logger.info("📝 Using rule-based decisions (no Gemini API key)")
+                self.model = None
+        else:
+            self.model = None
         
         # Risk scoring thresholds
         self.score_weights = {
@@ -416,6 +440,159 @@ class RiskAnalyzer:
             confidence=confidence
         )
 
+    def make_approval_decision(self, assessment: CreditAssessment, spending_data: Dict) -> Dict:
+        """Make final approval/rejection decision with reasoning"""
+        
+        # Rule-based decision logic
+        approval_score = assessment.score
+        risk_factors = assessment.risk_factors
+        
+        # Decision thresholds
+        if approval_score >= 680 and risk_factors.get('nsf_frequency', 0) < 2:
+            decision = 'APPROVED'
+            risk_level = 'Low Risk'
+        elif approval_score >= 620 and risk_factors.get('expense_ratio', 1) < 0.8:
+            decision = 'APPROVED'
+            risk_level = 'Moderate Risk'
+        elif approval_score >= 580:
+            decision = 'CONDITIONAL_APPROVAL'
+            risk_level = 'Higher Risk'
+        else:
+            decision = 'REJECTED'
+            risk_level = 'High Risk'
+        
+        # Generate detailed reasoning
+        reasoning = self._generate_reasoning(assessment, spending_data, decision, risk_level)
+        
+        # Risk factors analysis for frontend display
+        risk_factors_display = []
+        
+        if risk_factors.get('income_stability', 0) > 0.7:
+            risk_factors_display.append({
+                'factor': 'Income Stability', 
+                'impact': 'Positive',
+                'description': 'Consistent income pattern'
+            })
+        elif risk_factors.get('income_stability', 0) < 0.4:
+            risk_factors_display.append({
+                'factor': 'Income Stability', 
+                'impact': 'High',
+                'description': 'Irregular income pattern'
+            })
+        else:
+            risk_factors_display.append({
+                'factor': 'Income Stability', 
+                'impact': 'Moderate',
+                'description': 'Moderate income consistency'
+            })
+            
+        if risk_factors.get('expense_ratio', 1) < 0.5:
+            risk_factors_display.append({
+                'factor': 'Spending Control', 
+                'impact': 'Positive',
+                'description': 'Good expense management'
+            })
+        elif risk_factors.get('expense_ratio', 1) > 0.8:
+            risk_factors_display.append({
+                'factor': 'Spending Control', 
+                'impact': 'High',
+                'description': 'High expense ratio'
+            })
+        else:
+            risk_factors_display.append({
+                'factor': 'Spending Control', 
+                'impact': 'Moderate',
+                'description': 'Moderate spending patterns'
+            })
+            
+        if risk_factors.get('payment_reliability', 0) > 0.8:
+            risk_factors_display.append({
+                'factor': 'Payment History', 
+                'impact': 'Positive',
+                'description': 'Excellent payment consistency'
+            })
+        elif risk_factors.get('payment_reliability', 0) < 0.6:
+            risk_factors_display.append({
+                'factor': 'Payment History', 
+                'impact': 'High',
+                'description': 'Inconsistent payment patterns'
+            })
+        else:
+            risk_factors_display.append({
+                'factor': 'Payment History', 
+                'impact': 'Moderate',
+                'description': 'Adequate payment history'
+            })
+        
+        return {
+            'decision': decision,
+            'risk_level': risk_level,
+            'risk_score': assessment.score,
+            'reasoning': reasoning,
+            'risk_factors': risk_factors_display,
+            'confidence': assessment.confidence,
+            'tier': assessment.tier,
+            'eligibility': assessment.eligibility,
+            'generated_at': datetime.now().isoformat(),
+            'agent': 'risk-agent'
+        }
+
+    def _generate_reasoning(self, assessment: CreditAssessment, spending_data: Dict, decision: str, risk_level: str) -> str:
+        """Generate detailed reasoning for the approval decision"""
+        
+        if self.model:
+            try:
+                # Use Gemini for sophisticated reasoning
+                prompt = f"""
+                As a senior credit risk analyst, provide a professional assessment explanation for this credit application decision:
+                
+                APPLICANT PROFILE:
+                - Credit Score: {assessment.score}
+                - Risk Tier: {assessment.tier}
+                - Confidence Level: {assessment.confidence:.1%}
+                
+                FINANCIAL METRICS:
+                - Income Stability: {assessment.risk_factors.get('income_stability', 0):.1%}
+                - Expense Ratio: {assessment.risk_factors.get('expense_ratio', 0):.1%}
+                - Payment Consistency: {assessment.risk_factors.get('payment_reliability', 0):.1%}
+                - NSF Frequency: {assessment.risk_factors.get('nsf_frequency', 0)} per month
+                - Balance Volatility: {assessment.risk_factors.get('balance_volatility', 0):.1%}
+                
+                SPENDING ANALYSIS:
+                - Total Monthly Spending: ${spending_data.get('total_spending', 0):,.0f}
+                - Transaction Count: {spending_data.get('transaction_count', 0)}
+                - Primary Categories: {', '.join(list(spending_data.get('spending_categories', {}).keys())[:3])}
+                
+                DECISION: {decision}
+                RISK LEVEL: {risk_level}
+                
+                Provide a 2-3 sentence professional explanation that covers:
+                1. The primary factors that led to this decision
+                2. Key strengths or concerns identified
+                3. Any specific conditions or recommendations
+                
+                Keep it clear, professional, and customer-friendly. Focus on the most important factors.
+                """
+                
+                response = self.model.generate_content(prompt)
+                return response.text.strip()
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Gemini reasoning failed: {e}")
+                # Fall back to rule-based reasoning
+                pass
+        
+        # Rule-based reasoning fallback
+        if decision == 'APPROVED':
+            if assessment.score >= 700:
+                return f"Application approved based on excellent credit profile (Score: {assessment.score}). Strong financial stability with consistent income patterns and responsible spending behavior demonstrate low credit risk."
+            else:
+                return f"Application approved with moderate risk assessment (Score: {assessment.score}). Good financial management and payment history support creditworthiness despite some minor risk factors."
+        elif decision == 'CONDITIONAL_APPROVAL':
+            return f"Conditional approval granted (Score: {assessment.score}). While some risk factors require monitoring, overall financial profile supports limited credit extension with appropriate terms and conditions."
+        else:
+            return f"Application requires additional review (Score: {assessment.score}). Current financial profile presents elevated risk factors that need further assessment before credit extension can be considered."
+
 # Initialize Flask app and risk analyzer
 app = Flask(__name__)
 analyzer = RiskAnalyzer()
@@ -447,6 +624,29 @@ def assess_risk():
         
     except Exception as e:
         logger.error(f"Error in risk assessment: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/approve', methods=['POST'])
+def approve_application():
+    """Make approval/rejection decision with reasoning"""
+    data = request.get_json()
+    user_id = data.get('user_id', 'testuser')
+    spending_data = data.get('spending_data', {})
+    months = data.get('months', 6)
+    
+    try:
+        # First get risk assessment
+        assessment = analyzer.analyze_risk(user_id, months)
+        
+        # Then make approval decision
+        decision_result = analyzer.make_approval_decision(assessment, spending_data)
+        
+        logger.info(f"🎯 Risk Agent Decision for {user_id}: {decision_result['decision']} ({decision_result['risk_level']})")
+        
+        return jsonify(decision_result)
+        
+    except Exception as e:
+        logger.error(f"Error in approval decision: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

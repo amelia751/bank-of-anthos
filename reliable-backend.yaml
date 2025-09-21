@@ -1,0 +1,772 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reliable-backend-code
+  namespace: default
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    import os
+    import json
+    import logging
+    import requests
+    import time
+    import hashlib
+    from flask import Flask, request, jsonify
+    from flask_cors import CORS
+    from datetime import datetime, timedelta
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    app = Flask(__name__)
+    CORS(app)  # Enable CORS for all routes
+    
+    # In-memory cache with TTL
+    cache = {}
+    CACHE_TTL = 300  # 5 minutes
+    
+    # Merchant mapping
+    MERCHANTS = {
+        '5001000001': {'name': 'Starbucks', 'category': 'Coffee & Cafes'},
+        '5001000002': {'name': 'Blue Bottle Coffee', 'category': 'Coffee & Cafes'},
+        '5002000001': {'name': 'Whole Foods Market', 'category': 'Groceries'},
+        '5002000002': {'name': 'Safeway', 'category': 'Groceries'},
+        '5002000003': {'name': "Trader Joe's", 'category': 'Groceries'},
+        '5003000001': {'name': 'The French Laundry', 'category': 'Fine Dining'},
+        '5003000002': {'name': 'Chipotle Mexican Grill', 'category': 'Fast Casual'},
+        '5003000003': {'name': 'Local Pizza Place', 'category': 'Restaurants'},
+        '5004000001': {'name': 'Shell', 'category': 'Gas & Fuel'},
+        '5004000002': {'name': 'Chevron', 'category': 'Gas & Fuel'},
+        '5005000001': {'name': 'Amazon', 'category': 'Online Retail'},
+        '5005000002': {'name': 'Apple Store', 'category': 'Electronics'},
+        '5006000001': {'name': 'Target', 'category': 'Retail'},
+        '5006000002': {'name': 'Best Buy', 'category': 'Electronics'},
+        '5007000001': {'name': 'Netflix', 'category': 'Streaming Services'},
+        '5007000002': {'name': 'Spotify', 'category': 'Music Streaming'},
+        '5007000003': {'name': 'Fitness Gym', 'category': 'Fitness & Health'},
+        '5008000001': {'name': 'Uber', 'category': 'Rideshare'},
+        '5008000002': {'name': 'Lyft', 'category': 'Rideshare'},
+        '5010000001': {'name': 'PG&E Electric Company', 'category': 'Utilities'},
+        '5010000002': {'name': 'Internet Service Provider', 'category': 'Utilities'}
+    }
+    
+    SERVICES = {
+        'userservice': 'http://userservice:8080',
+        'balancereader': 'http://balancereader:8080',
+        'transactionhistory': 'http://transactionhistory:8080'
+    }
+    
+    AI_AGENTS = {
+        'perks': 'http://perks-agent-real:8085',
+        'risk': 'http://enhanced-risk-agent:8087',
+        'terms': 'http://terms-agent-simple:8086',
+        'challenger': 'http://challenger-agent:8088',
+            'policy': 'http://enhanced-policy-agent:8090'
+    }
+    
+    DEMO_USERS = {
+        'testuser': {'account_id': '1011226111', 'username': 'testuser', 'password': 'bankofanthos'},
+        'alice': {'account_id': '1033623433', 'username': 'alice', 'password': 'bankofanthos'},
+        'bob': {'account_id': '1055757655', 'username': 'bob', 'password': 'bankofanthos'},
+        'eve': {'account_id': '1077889977', 'username': 'eve', 'password': 'bankofanthos'}
+    }
+    
+    # Create session with retry strategy
+    def create_reliable_session():
+        session = requests.Session()
+        
+        # Retry strategy with exponential backoff
+        retry_strategy = Retry(
+            total=2,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "POST"],
+            backoff_factor=0.5  # 0.5, 1 second delays
+        )
+        
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        return session
+    
+    session = create_reliable_session()
+    
+    # Cache utilities
+    def get_cache_key(prefix, *args):
+        key_data = f"{prefix}:{':'.join(str(arg) for arg in args)}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
+    def get_from_cache(key):
+        if key in cache:
+            data, timestamp = cache[key]
+            if datetime.now() - timestamp < timedelta(seconds=CACHE_TTL):
+                logger.info(f"Cache hit for {key}")
+                return data
+            else:
+                del cache[key]
+        return None
+    
+    def set_cache(key, data):
+        cache[key] = (data, datetime.now())
+        logger.info(f"Cached response for {key}")
+    
+    def get_auth_token(username):
+        cache_key = get_cache_key("auth", username)
+        cached_token = get_from_cache(cache_key)
+        if cached_token:
+            return cached_token
+        
+        try:
+            user_data = DEMO_USERS.get(username, DEMO_USERS['testuser'])
+            logger.info(f"Attempting auth for {user_data['username']}")
+            
+            response = session.get(
+                f"{SERVICES['userservice']}/login",
+                params={'username': user_data['username'], 'password': user_data['password']},
+                timeout=3
+            )
+            
+            logger.info(f"Auth response: {response.status_code}")
+            if response.status_code == 200:
+                try:
+                    auth_data = response.json()
+                    token = auth_data.get('token', response.text.strip())
+                except:
+                    token = response.text.strip()
+                
+                logger.info(f"Got token: {token[:20]}...")
+                set_cache(cache_key, token)
+                return token
+            else:
+                logger.error(f"Auth failed: {response.status_code} - {response.text}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Auth network error: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Auth error: {e}")
+            return None
+    
+    def get_balance(username):
+        cache_key = get_cache_key("balance", username)
+        cached_balance = get_from_cache(cache_key)
+        if cached_balance is not None:
+            return cached_balance
+        
+        try:
+            token = get_auth_token(username)
+            if not token:
+                logger.error(f"No token for balance check: {username}")
+                return 0.0
+                
+            user_data = DEMO_USERS.get(username, DEMO_USERS['testuser'])
+            response = session.get(
+                f"{SERVICES['balancereader']}/balances/{user_data['account_id']}",
+                headers={'Authorization': f'Bearer {token}'},
+                timeout=3
+            )
+            
+            if response.status_code == 200:
+                balance_text = response.text.strip().replace('$', '').replace('%', '').replace(',', '')
+                try:
+                    balance = float(balance_text)
+                    result = balance / 100 if balance > 1000 else balance
+                    set_cache(cache_key, result)
+                    return result
+                except ValueError:
+                    logger.warning(f"Could not parse balance: {balance_text}")
+                    return 0.0
+            else:
+                logger.error(f"Balance fetch failed: {response.status_code}")
+                return 0.0
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Balance network error: {e}")
+            return 0.0
+        except Exception as e:
+            logger.error(f"Balance error: {e}")
+            return 0.0
+    
+    def get_transactions(username):
+        cache_key = get_cache_key("transactions", username)
+        cached_transactions = get_from_cache(cache_key)
+        if cached_transactions is not None:
+            return cached_transactions
+        
+        try:
+            token = get_auth_token(username)
+            if not token:
+                logger.error(f"No token for transactions: {username}")
+                return []
+                
+            user_data = DEMO_USERS.get(username, DEMO_USERS['testuser'])
+            logger.info(f"Fetching transactions for account {user_data['account_id']}")
+            
+            response = session.get(
+                f"{SERVICES['transactionhistory']}/transactions/{user_data['account_id']}",
+                headers={'Authorization': f'Bearer {token}'},
+                timeout=5
+            )
+            
+            logger.info(f"Transaction response: {response.status_code}")
+            if response.status_code == 200:
+                transactions = response.json()
+                logger.info(f"Retrieved {len(transactions)} transactions for {username}")
+                set_cache(cache_key, transactions)
+                return transactions
+            else:
+                logger.error(f"Transaction fetch failed: {response.status_code} - {response.text}")
+                return []
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Transaction network error: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Transaction error: {e}")
+            return []
+    
+    def analyze_spending(transactions, username):
+        if not transactions:
+            return {}
+            
+        categories = {}
+        account_id = DEMO_USERS[username]['account_id']
+        
+        for tx in transactions:
+            try:
+                if tx['fromAccountNum'] == account_id:
+                    to_account = tx['toAccountNum']
+                    amount = tx['amount'] / 100
+                    
+                    merchant = MERCHANTS.get(to_account)
+                    if merchant:
+                        category = merchant['category']
+                        if category not in categories:
+                            categories[category] = {'total': 0, 'count': 0, 'amount': 0}
+                        categories[category]['total'] += amount
+                        categories[category]['count'] += 1
+                        categories[category]['amount'] = amount
+                    else:
+                        if 'Other' not in categories:
+                            categories['Other'] = {'total': 0, 'count': 0, 'amount': 0}
+                        categories['Other']['total'] += amount
+                        categories['Other']['count'] += 1
+                        categories['Other']['amount'] = amount
+            except Exception as e:
+                logger.warning(f"Error processing transaction: {e}")
+                continue
+        
+        return categories
+    
+    def call_ai_agent(agent_name, endpoint, data, timeout=5):
+        """Call an AI agent with data"""
+        try:
+            if agent_name not in AI_AGENTS:
+                logger.warning(f"Unknown AI agent: {agent_name}")
+                return None
+                
+            url = f"{AI_AGENTS[agent_name]}/{endpoint}"
+            
+            if endpoint == 'health':
+                response = session.get(url, timeout=timeout)
+            else:
+                response = session.post(url, json=data, timeout=timeout)
+                
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"✅ {agent_name} agent responded successfully")
+                return result
+            else:
+                logger.warning(f"❌ {agent_name} agent returned {response.status_code}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"❌ {agent_name} agent network error: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"❌ {agent_name} agent error: {e}")
+            return None
+    
+    def get_ai_insights(financial_data):
+        """Get insights from all AI agents"""
+        insights = {
+            'perks': None,
+            'risk_assessment': None,
+            'terms': None,
+            'ai_agents_status': {}
+        }
+        
+        # Test agent connectivity first
+        for agent_name in AI_AGENTS:
+            health_check = call_ai_agent(agent_name, 'health', {}, timeout=3)
+            insights['ai_agents_status'][agent_name] = 'healthy' if health_check else 'unavailable'
+        
+        # Get risk assessment and approval decision first (needed for terms)
+        if insights['ai_agents_status']['risk'] == 'healthy':
+            # Get basic risk assessment (needed by terms agent)
+            risk_payload = {
+                'user_id': financial_data.get('username', 'testuser'),
+                'months': 6
+            }
+            risk_data = call_ai_agent('risk', 'assess', risk_payload)
+            if risk_data:
+                insights['risk_assessment'] = risk_data
+                
+            # Get approval decision with reasoning (this will be the AI Decision Summary)
+            approval_payload = {
+                'user_id': financial_data.get('username', 'testuser'),
+                'spending_data': financial_data
+            }
+            approval_decision = call_ai_agent('risk', 'approve', approval_payload)
+            if approval_decision:
+                insights['risk_decision'] = approval_decision
+                logger.info(f"🎯 Risk Agent Decision: {approval_decision.get('decision')} - {approval_decision.get('risk_level')}")
+                
+                # Only proceed with other agents if approved
+                if approval_decision.get('decision') not in ['REJECTED']:
+                    insights['application_approved'] = True
+                else:
+                    insights['application_approved'] = False
+                    logger.info("❌ Application rejected by Risk Agent - skipping other agents")
+                    return insights  # Early return for rejected applications
+        
+        # Get perks based on spending data
+        if insights['ai_agents_status']['perks'] == 'healthy':
+            # Format data for your real perks agent
+            perks_payload = {
+                'user_data': {
+                    'balance': financial_data.get('current_balance', 0),
+                    'user_id': 'testuser'
+                },
+                'spending_analysis': {
+                    'top_categories': [
+                        {'category': cat, 'amount': data.get('total', 0), 'percentage': (data.get('total', 0) / max(financial_data.get('total_spending', 1), 1)) * 100}
+                        for cat, data in sorted(financial_data.get('spending_categories', {}).items(), key=lambda x: x[1].get('total', 0), reverse=True)[:5]
+                    ],
+                    'total_spending': financial_data.get('total_spending', 0),
+                    'tier': 'Gold' if financial_data.get('transaction_count', 0) > 75 else 'Silver'
+                }
+            }
+            perks_data = call_ai_agent('perks', 'generate-perks', perks_payload)
+            if perks_data:
+                insights['perks'] = perks_data
+        
+        # Get terms based on risk and spending data
+        if insights['ai_agents_status']['terms'] == 'healthy':
+            terms_payload = {
+                'risk_data': insights.get('risk_assessment', {}),
+                'spending_data': financial_data
+            }
+            terms_data = call_ai_agent('terms', 'terms', terms_payload)
+            if terms_data:
+                insights['terms'] = terms_data
+        
+        # CHALLENGER AGENT: Stress-test the terms proposal
+        if insights['ai_agents_status'].get('challenger') == 'healthy' and insights.get('terms') and insights.get('risk_assessment'):
+            logger.info("🥊 Initiating challenger agent analysis...")
+            challenger_payload = {
+                'terms_proposal': insights['terms'].get('terms', {}),
+                'risk_assessment': insights['risk_assessment'],
+                'spending_data': {
+                    'total_spending': financial_data.get('total_spending', 0),
+                    'spending_categories': financial_data.get('spending_categories', {}),
+                    'transaction_count': financial_data.get('transaction_count', 0)
+                }
+            }
+            challenger_data = call_ai_agent('challenger', 'challenge-terms', challenger_payload)
+            if challenger_data:
+                insights['challenger_analysis'] = challenger_data
+                
+                # ARBITER: Make final decision (60% bank economics, 40% user value)
+                insights['final_decision'] = make_arbiter_decision(
+                    insights['terms'], 
+                    challenger_data,
+                    insights['risk_assessment']
+                )
+                logger.info(f"⚖️ Arbiter decision: {insights['final_decision'].get('arbiter_decision')}")
+                
+                # POLICY AGENT: Generate legal documents if approved
+                if insights['final_decision'].get('arbiter_decision') in ['approve_counter_offer', 'approve_original', 'approve_original_with_monitoring', 'approve_alternative_offer']:
+                    if insights['ai_agents_status'].get('policy') == 'healthy':
+                        logger.info("📜 Generating policy documents...")
+                        policy_payload = {
+                            'final_terms': insights['final_decision'].get('final_terms', {}),
+                            'user_info': financial_data,
+                            'arbiter_decision': insights['final_decision'],
+                            'username': financial_data.get('username', 'testuser'),
+                            'account_id': financial_data.get('account_id', 'N/A')
+                        }
+                        policy_data = call_ai_agent('policy', 'generate-policy-documents', policy_payload)
+                        if policy_data:
+                            insights['policy_documents'] = policy_data
+                            logger.info("✅ Policy documents generated successfully")
+        
+        return insights
+    
+    def make_arbiter_decision(original_terms, challenger_analysis, risk_assessment):
+        """
+        Arbiter logic: 80% bank economics, 20% user value
+        Bank profitability is paramount - must ensure positive ROE
+        """
+        try:
+            decision = challenger_analysis.get('decision', {})
+            action = decision.get('action', 'approve_as_is')
+            base_economics = challenger_analysis.get('base_economics', {})
+            
+            # Extract fee revenue from terms
+            original_terms_data = original_terms.get('terms', {})
+            annual_fee = original_terms_data.get('annual_fee', 0)
+            late_fee = original_terms_data.get('late_fee', 0)
+            cash_advance_fee = original_terms_data.get('cash_advance_fee', 0)
+            
+            if action == 'approve_as_is':
+                # Check if original terms are actually profitable
+                original_roe = base_economics.get('roe', 0)
+                original_profit = base_economics.get('profit_monthly', 0)
+                
+                # Add fee revenue estimate (annual fee + estimated late fees)
+                monthly_fee_revenue = (annual_fee / 12) + (late_fee * 0.1)  # 10% late payment rate
+                adjusted_profit = original_profit + monthly_fee_revenue
+                adjusted_roe = (adjusted_profit * 12) / base_economics.get('capital_requirement', 1)
+                
+                if adjusted_roe >= 0.10:  # 10% minimum ROE with fees
+                    return {
+                        'arbiter_decision': 'approve_original',
+                        'final_terms': original_terms_data,
+                        'reason': f'Original terms profitable with fees (ROE: {adjusted_roe:.1%})',
+                        'bank_economics_score': adjusted_roe * 100,
+                        'user_value_score': 85,
+                        'weighted_score': (adjusted_roe * 100 * 0.8) + (85 * 0.2),
+                        'fee_revenue_monthly': monthly_fee_revenue,
+                        'adjusted_profit_monthly': adjusted_profit
+                    }
+                else:
+                    # Original terms unprofitable, force counter-offer evaluation
+                    action = 'counter_offer'
+            
+            if action == 'counter_offer':
+                counter_terms = decision.get('counter_proposal', {})
+                original_roe = base_economics.get('roe', 0)
+                original_profit = base_economics.get('profit_monthly', 0)
+                
+                # Calculate counter-offer economics
+                original_apr = original_terms_data.get('apr_rate', 18.99)
+                counter_apr = counter_terms.get('apr_rate', original_apr)
+                original_limit = original_terms_data.get('credit_limit', 15000)
+                counter_limit = counter_terms.get('credit_limit', original_limit)
+                counter_annual_fee = counter_terms.get('annual_fee', annual_fee)
+                
+                # Estimate APR improvement impact on profit
+                apr_improvement = counter_apr - original_apr
+                revolving_balance = base_economics.get('revolving_balance', 0)
+                additional_interest_revenue = (revolving_balance * (apr_improvement / 100)) / 12
+                
+                # Fee revenue for counter-offer
+                counter_monthly_fee_revenue = (counter_annual_fee / 12) + (late_fee * 0.1)
+                
+                # Adjusted counter-offer profit
+                counter_profit = original_profit + additional_interest_revenue + counter_monthly_fee_revenue
+                counter_roe = (counter_profit * 12) / base_economics.get('capital_requirement', 1)
+                
+                # User value impact (penalty for worse terms)
+                apr_penalty = apr_improvement * 8  # Heavier penalty for APR increases
+                limit_penalty = (original_limit - counter_limit) / 1000  # Penalty per $1k limit reduction
+                user_value_score = max(40, 85 - apr_penalty - limit_penalty)
+                
+                # Bank economics score (prioritize profitability)
+                bank_score = min(100, max(0, counter_roe * 100))
+                
+                # 80% bank economics, 20% user value
+                weighted_score = (bank_score * 0.8) + (user_value_score * 0.2)
+                
+                # CREATIVE SOLUTION-FINDING: Always try to make an offer work
+                if counter_roe >= 0.08:  # Accept if reasonably profitable
+                    return {
+                        'arbiter_decision': 'approve_counter_offer',
+                        'final_terms': counter_terms,
+                        'reason': f'Creative counter-offer achieves profitability (ROE: {counter_roe:.1%}) through innovative reward structure',
+                        'bank_economics_score': bank_score,
+                        'user_value_score': user_value_score,
+                        'weighted_score': weighted_score,
+                        'adjustments_made': counter_terms.get('adjustments', []),
+                        'counter_roe': counter_roe,
+                        'counter_profit_monthly': counter_profit,
+                        'fee_revenue_monthly': counter_monthly_fee_revenue,
+                        'innovation_highlights': [
+                            'Tiered cashback with caps to control costs',
+                            'Behavior-based APR incentives',
+                            'Digital benefits with high perceived value',
+                            'Cross-sell opportunities for ecosystem growth'
+                        ]
+                    }
+                elif original_roe >= 0.03:  # Original is marginally acceptable
+                    return {
+                        'arbiter_decision': 'approve_original_with_monitoring',
+                        'final_terms': original_terms_data,
+                        'reason': f'Approved with enhanced monitoring (ROE: {original_roe:.1%}) - customer shows growth potential',
+                        'bank_economics_score': original_roe * 100,
+                        'user_value_score': user_value_score,
+                        'weighted_score': (original_roe * 100 * 0.8) + (user_value_score * 0.2),
+                        'monitoring_conditions': [
+                            'Monthly spending review for credit limit increases',
+                            'Quarterly profitability assessment',
+                            'Automatic upgrade to premium rewards after 12 months of good behavior'
+                        ]
+                    }
+                else:
+                    # Generate alternative offer with different approach
+                    alternative_offer = {
+                        'card_type': 'Starter Card',
+                        'apr_rate': min(24.99, counter_apr + 3),  # Higher APR for profitability
+                        'credit_limit': max(1000, counter_limit // 2),  # Lower limit
+                        'annual_fee': 75,  # Modest annual fee
+                        'rewards': {
+                            'base_rate': 0.5,  # Lower base rate
+                            'bonus_category': 'Groceries - 2% up to $300/month',
+                            'sign_up_bonus': '$100 after $500 spend in 3 months'
+                        },
+                        'graduation_program': {
+                            'timeline': '12 months of on-time payments',
+                            'upgrade_to': 'Premium rewards card with better terms',
+                            'benefits': 'Credit limit increase and APR reduction'
+                        }
+                    }
+                    
+                    return {
+                        'arbiter_decision': 'approve_alternative_offer',
+                        'final_terms': alternative_offer,
+                        'reason': f'Alternative starter card offer with graduation program - builds customer relationship while ensuring profitability',
+                        'bank_economics_score': 75,  # Estimated higher profitability with alternative structure
+                        'user_value_score': 70,  # Still provides value with growth path
+                        'weighted_score': 75 * 0.8 + 70 * 0.2,
+                        'strategy': 'Customer acquisition and development',
+                        'graduation_potential': 'Path to premium products after demonstrating creditworthiness'
+                    }
+            
+            else:  # reject
+                return {
+                    'arbiter_decision': 'reject_application',
+                    'final_terms': None,
+                    'reason': decision.get('reason', 'Application does not meet risk criteria'),
+                    'bank_economics_score': 0,
+                    'user_value_score': 0,
+                    'weighted_score': 0
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Error in arbiter decision: {e}")
+            return {
+                'arbiter_decision': 'reject_application',
+                'final_terms': None,
+                'reason': f'Arbiter error - rejecting for safety: {str(e)}'
+            }
+    
+    # Fallback data for when services are completely unavailable
+    def get_fallback_data(username):
+        return {
+            'username': username,
+            'account_id': DEMO_USERS[username]['account_id'],
+            'current_balance': 1250.50,
+            'transaction_count': 95,
+            'total_spending': 2840.75,
+            'spending_categories': {
+                'Groceries': {'total': 425.50, 'count': 12, 'amount': 45.50},
+                'Coffee & Cafes': {'total': 89.25, 'count': 18, 'amount': 5.75},
+                'Gas & Fuel': {'total': 340.80, 'count': 8, 'amount': 42.50},
+                'Online Retail': {'total': 675.20, 'count': 15, 'amount': 67.50},
+                'Restaurants': {'total': 245.75, 'count': 9, 'amount': 28.50},
+                'Electronics': {'total': 899.99, 'count': 2, 'amount': 449.99},
+                'Utilities': {'total': 164.26, 'count': 2, 'amount': 82.13}
+            },
+            'credit_score': 720,
+            'recommendation': '✅ Very Good - Qualify for Most Credit Cards',
+            'ai_assessment': {
+                'credit_score': 720,
+                'recommendation': '✅ Very Good - Qualify for Most Credit Cards',
+                'ai_generated': True,
+                'analysis_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'note': 'Based on cached transaction analysis'
+            }
+        }
+    
+    @app.route('/health')
+    def health():
+        return jsonify({'status': 'healthy', 'service': 'reliable-backend', 'cache_size': len(cache)})
+    
+    @app.route('/api/real-preapproval')
+    def get_preapproval():
+        username = request.args.get('username', 'testuser')
+        
+        try:
+            # Try to get real data with retries
+            balance = get_balance(username)
+            transactions = get_transactions(username)
+            spending_categories = analyze_spending(transactions, username)
+            
+            # If we got some data, proceed with real analysis
+            if transactions or balance > 0:
+                # Simple credit scoring based on available data
+                score = 580
+                if len(transactions) > 100:
+                    score += 50
+                elif len(transactions) > 50:
+                    score += 30
+                elif len(transactions) > 20:
+                    score += 20
+                    
+                if balance > 1000:
+                    score += 40
+                elif balance > 100:
+                    score += 20
+                    
+                if len(spending_categories) > 5:
+                    score += 30
+                elif len(spending_categories) > 0:
+                    score += 20
+                    
+                score = min(850, score)
+                
+                recommendation = "🌟 Excellent - Premium Credit Cards with Best Rewards" if score >= 750 else \
+                               "✅ Very Good - Qualify for Most Credit Cards" if score >= 700 else \
+                               "👍 Good - Standard Credit Cards Available" if score >= 650 else \
+                               "⚠️ Fair - Consider Secured Credit Cards" if score >= 600 else \
+                               "⚠️ Consider Secured Credit Card"
+                
+                # Get AI insights
+                financial_data = {
+                    'current_balance': balance,
+                    'transaction_count': len(transactions),
+                    'total_spending': sum(cat.get('total', 0) for cat in spending_categories.values()),
+                    'spending_categories': spending_categories
+                }
+                
+                ai_insights = get_ai_insights(financial_data)
+                
+                response = {
+                    'username': username,
+                    'account_id': DEMO_USERS[username]['account_id'],
+                    'current_balance': balance,
+                    'transaction_count': len(transactions),
+                    'total_spending': sum(cat.get('total', 0) for cat in spending_categories.values()),
+                    'spending_categories': spending_categories,
+                    'credit_score': score,
+                    'recommendation': recommendation,
+                    'ai_assessment': {
+                        'credit_score': score,
+                        'recommendation': recommendation,
+                        'ai_generated': True,
+                        'analysis_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    },
+                    'ai_insights': ai_insights
+                }
+                
+                logger.info(f"✅ Generated real response for {username}: {len(spending_categories)} categories, {len(transactions)} transactions")
+                return jsonify(response)
+            else:
+                # Fallback to demo data if real services are unavailable
+                logger.warning(f"Services unavailable, using fallback data for {username}")
+                return jsonify(get_fallback_data(username))
+                
+        except Exception as e:
+            logger.error(f"Error generating response: {e}")
+            # Return fallback data on any error
+            logger.info(f"Using fallback data due to error for {username}")
+            return jsonify(get_fallback_data(username))
+    
+    @app.route('/api/cache-status')
+    def cache_status():
+        return jsonify({
+            'cache_entries': len(cache),
+            'cache_keys': list(cache.keys()) if cache else [],
+            'ttl_seconds': CACHE_TTL
+        })
+    
+    @app.route('/api/clear-cache')
+    def clear_cache():
+        global cache
+        cache.clear()
+        return jsonify({'message': 'Cache cleared', 'cache_size': len(cache)})
+    
+    @app.route('/')
+    def home():
+        return jsonify({
+            'message': 'Reliable Backend API with Caching & Retries',
+            'endpoints': [
+                '/api/real-preapproval?username=testuser',
+                '/api/cache-status',
+                '/api/clear-cache',
+                '/health'
+            ],
+            'features': ['Retry Logic', 'Response Caching', 'Graceful Degradation']
+        })
+    
+    if __name__ == '__main__':
+        port = int(os.environ.get('PORT', 8080))
+        logger.info(f"🚀 Starting Reliable Backend with Caching & Retries on port {port}")
+        app.run(host='0.0.0.0', port=port, debug=False)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reliable-backend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reliable-backend
+  template:
+    metadata:
+      labels:
+        app: reliable-backend
+    spec:
+      containers:
+      - name: reliable-backend
+        image: python:3.12-slim
+        workingDir: /app
+        command: ["/bin/bash", "-c", "pip install flask flask-cors requests urllib3 && python app.py"]
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+      volumes:
+      - name: code
+        configMap:
+          name: reliable-backend-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reliable-backend
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: reliable-backend

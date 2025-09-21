@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Credit Pre-Approval - Bank of Anthos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid #333333;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #a1a1a1;
+            font-weight: 400;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: #00d632;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 24px;
+            color: #000000;
+        }
+
+        .demo-section {
+            margin-bottom: 24px;
+        }
+
+        .ai-demo {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .ai-demo h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .ai-demo p {
+            color: #a1a1a1;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .user-profile {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .profile-card {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .profile-card:hover {
+            border-color: #00d632;
+            transform: translateY(-2px);
+        }
+
+        .profile-card h3 {
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-icon {
+            width: 20px;
+            height: 20px;
+            color: #00d632;
+        }
+
+        .spending-chart {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .spending-item {
+            background: #333333;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 0.85em;
+            border: 1px solid #555555;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .spending-item i {
+            color: #00d632;
+            width: 12px;
+        }
+
+        .ai-analysis {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid #00d632;
+        }
+
+        .ai-analysis h3 {
+            color: #ffffff;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .credit-offers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .offer-card {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .offer-card:hover {
+            border-color: #00d632;
+            transform: translateY(-2px);
+        }
+
+        .offer-card.approved {
+            border-color: #00d632;
+            background: #1a1a1a;
+        }
+
+        .tier-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .tier-approved {
+            background: #00d632;
+            color: #000000;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .feature-list li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: #4CAF50;
+            font-weight: bold;
+            width: 20px;
+        }
+
+        .btn {
+            background: #00d632;
+            color: #000000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .btn:hover {
+            background: #00c42e;
+            transform: translateY(-1px);
+        }
+
+        .btn-demo {
+            background: #00d632;
+            color: #000000;
+            margin: 24px auto;
+            padding: 16px 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            max-width: 300px;
+        }
+
+        .btn-demo:hover {
+            background: #00c42e;
+            transform: translateY(-2px);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin: 4px 0;
+            background: #333333;
+            border: 1px solid #555555;
+        }
+
+        .status-excellent {
+            background: #333333;
+            color: #00d632;
+            border-color: #00d632;
+        }
+
+        .status-good {
+            background: #333333;
+            color: #ffa726;
+            border-color: #ffa726;
+        }
+        
+        .status-poor {
+            background: #333333;
+            color: #ff5722;
+            border-color: #ff5722;
+        }
+
+        .explanation {
+            background: #333333;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 15px 0;
+            border-left: 4px solid #00d632;
+        }
+
+        .explanation p {
+            color: #a1a1a1;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .explanation em {
+            color: #ffffff;
+            font-style: normal;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .policy-section {
+            background: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid #9c27b0;
+        }
+
+        .policy-section h3 {
+            color: #9c27b0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .document-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .document-card {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .document-card:hover {
+            border-color: #9c27b0;
+            transform: translateY(-2px);
+        }
+
+        .document-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .document-preview {
+            color: #a1a1a1;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: #555;
+            border-color: #9c27b0;
+        }
+
+        .compliance-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #4CAF50;
+            color: #000;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .signature-notice {
+            background: #ff9800;
+            color: #000;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin: 16px 0;
+        }
+
+        @media (max-width: 768px) {
+            .user-profile {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .demo-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <h1>AI-Powered Credit Pre-Approval</h1>
+            <p>Get your personalized credit card offer in seconds</p>
+            <p>No credit check required • We analyze your spending patterns</p>
+        </div>
+
+        <div class="demo-section">
+            <div class="ai-demo">
+                <h2><i class="fas fa-credit-card card-icon"></i> Ready for Your Personalized Credit Card Offer?</h2>
+                <p><strong>No credit history needed!</strong> Our AI analyzes your past transactions to create a credit card perfectly tailored to your spending habits.</p>
+                
+                <div style="margin: 20px 0;">
+                    <h4><i class="fas fa-magic card-icon"></i> How It Works:</h4>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>Smart Analysis:</strong> We review your spending patterns and financial behavior</li>
+                        <li><strong>AI Personalization:</strong> Our AI designs cashback rewards for your favorite merchants</li>
+                        <li><strong>Instant Approval:</strong> Get your customized offer in seconds, not days</li>
+                        <li><strong>Fair Terms:</strong> Competitive rates based on your actual financial habits</li>
+                    </ul>
+                </div>
+
+                <button class="btn btn-demo" onclick="showAIDemo()">
+                    <i class="fas fa-magic"></i>
+                    Get My Personalized Offer
+                </button>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>AI agents analyzing account data...</p>
+            </div>
+
+            <div id="demo-results" style="display: none;">
+                <div class="user-profile">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-chart-line card-icon"></i> Account Analysis</h3>
+                        <div class="status-indicator status-excellent" id="account-status">
+                            <span>●</span> Excellent Financial Health
+                        </div>
+                        <div style="margin: 15px 0; color: #a1a1a1;" id="account-details">
+                            <strong>Current Balance:</strong> $2,704<br>
+                            <strong>Monthly Spending:</strong> $5,542<br>
+                            <strong>Transactions:</strong> 100 (last 6 months)<br>
+                            <strong>Payment History:</strong> 100% reliable
+                        </div>
+                        
+                        <h4><i class="fas fa-credit-card card-icon"></i> Spending Categories</h4>
+                        <div class="spending-chart" id="spending-chart">
+                            <div class="spending-item">
+                                <i class="fas fa-spinner fa-spin"></i> Loading your spending patterns...
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-card">
+                        <h3><i class="fas fa-brain card-icon"></i> AI Risk Assessment</h3>
+                        <div style="font-size: 1.5em; color: #00d632; margin: 10px 0;" id="credit-score">
+                            Credit Score: <strong>Loading...</strong>
+                        </div>
+                        <div class="tier-badge tier-approved" id="risk-tier">
+                            <i class="fas fa-star"></i> LOADING...
+                        </div>
+                        
+                        <h4><i class="fas fa-chart-bar card-icon"></i> Risk Factors Analysis:</h4>
+                        <div style="margin: 10px 0;" id="risk-factors">
+                            <div class="status-indicator">
+                                <i class="fas fa-spinner fa-spin"></i> Analyzing risk factors...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-analysis">
+                    <h3><i class="fas fa-chart-line card-icon"></i> AI Decision Summary</h3>
+                    <div class="explanation">
+                        <p id="ai-decision-summary"><em><i class="fas fa-spinner fa-spin"></i> AI is analyzing your financial profile...</em></p>
+                    </div>
+                </div>
+
+                <h2><i class="fas fa-credit-card"></i> Personalized Credit Offers</h2>
+                <div class="credit-offers" id="credit-offers">
+                    <div class="offer-card" style="text-align: center; padding: 40px;">
+                        <div style="font-size: 1.2em; color: #a1a1a1; margin-bottom: 20px;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading personalized credit offers...
+                        </div>
+                        <p style="color: #666; font-size: 0.9em;">
+                            AI is analyzing your spending patterns to create tailored financial products
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Policy Documents Section -->
+                <div class="policy-section" id="policy-section" style="display: none;">
+                    <h3><i class="fas fa-file-contract"></i> Legal Documents & Fine Print</h3>
+                    <div class="compliance-badge">
+                        <i class="fas fa-check-circle"></i>
+                        <span id="compliance-score">100% Regulatory Compliant</span>
+                    </div>
+                    <div class="signature-notice">
+                        <i class="fas fa-signature"></i> Electronic signature required for all documents below
+                    </div>
+                    <div class="document-grid" id="document-grid">
+                        <!-- Policy documents will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://34.123.3.178';
+        let fullData = null;
+
+        async function showAIDemo() {
+            document.querySelector('.btn-demo').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/real-preapproval?username=testuser&_t=${Date.now()}`);
+                fullData = await response.json();
+                
+                console.log('Complete AI analysis data:', fullData);
+                
+                if (fullData.ai_insights) {
+                    updateDemoResults(fullData);
+                } else {
+                    console.error('No AI insights data received');
+                    showFallbackDemo();
+                }
+            } catch (error) {
+                console.error('Error fetching AI data:', error);
+                showFallbackDemo();
+            }
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('demo-results').style.display = 'block';
+            
+            document.getElementById('demo-results').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+        
+        function updateDemoResults(data) {
+            // Update account details
+            if (data.current_balance && data.total_spending && data.transaction_count) {
+                document.getElementById('account-details').innerHTML = `
+                    <strong>Current Balance:</strong> $${data.current_balance.toFixed(0)}<br>
+                    <strong>Monthly Spending:</strong> $${data.total_spending.toFixed(0)}<br>
+                    <strong>Transactions:</strong> ${data.transaction_count} (last 6 months)<br>
+                    <strong>Payment History:</strong> 100% reliable
+                `;
+            }
+
+            // Update spending categories
+            if (data.spending_categories) {
+                updateSpendingChart(data.spending_categories);
+            }
+
+            // Update risk assessment
+            if (data.ai_insights?.risk_assessment) {
+                updateRiskAssessment(data.ai_insights.risk_assessment);
+            }
+
+            // Update AI decision summary
+            if (data.ai_insights?.final_decision) {
+                updateAIDecisionSummary(data.ai_insights.final_decision);
+            }
+
+            // Update credit offers with final approved terms
+            if (data.ai_insights?.final_decision?.final_terms) {
+                updateCreditOffers(data.ai_insights.final_decision.final_terms, data.ai_insights);
+            }
+
+            // Show and update policy documents
+            if (data.ai_insights?.policy_documents) {
+                updatePolicyDocuments(data.ai_insights.policy_documents);
+                document.getElementById('policy-section').style.display = 'block';
+            }
+        }
+
+        function updateSpendingChart(spendingCategories) {
+            const spendingChart = document.getElementById('spending-chart');
+            spendingChart.innerHTML = '';
+            
+            const categoryIcons = {
+                'Coffee & Cafes': 'fas fa-coffee',
+                'Groceries': 'fas fa-shopping-cart', 
+                'Gas & Fuel': 'fas fa-gas-pump',
+                'Restaurants': 'fas fa-utensils',
+                'Fast Casual': 'fas fa-hamburger',
+                'Online Retail': 'fas fa-laptop',
+                'Retail': 'fas fa-shopping-bag',
+                'Streaming Services': 'fas fa-play',
+                'Music Streaming': 'fas fa-music',
+                'Rideshare': 'fas fa-car',
+                'Electronics': 'fas fa-mobile-alt',
+                'Fitness & Health': 'fas fa-dumbbell',
+                'Other': 'fas fa-credit-card'
+            };
+            
+            const sortedCategories = Object.entries(spendingCategories)
+                .filter(([category, data]) => data.total > 0)
+                .sort(([,a], [,b]) => b.total - a.total)
+                .slice(0, 6);
+            
+            if (sortedCategories.length === 0) {
+                spendingChart.innerHTML = '<div class="spending-item"><i class="fas fa-info-circle"></i> No spending data available</div>';
+                return;
+            }
+            
+            sortedCategories.forEach(([category, data]) => {
+                const icon = categoryIcons[category] || 'fas fa-credit-card';
+                const spendingItem = document.createElement('div');
+                spendingItem.className = 'spending-item';
+                spendingItem.innerHTML = `
+                    <i class="${icon}"></i> 
+                    ${category}: $${data.total.toFixed(0)}
+                `;
+                spendingChart.appendChild(spendingItem);
+            });
+        }
+
+        function updateRiskAssessment(riskData) {
+            // Update credit score
+            if (riskData.risk_score) {
+                const creditScore = 680 + (50 - riskData.risk_score); // Convert risk score to credit score
+                document.getElementById('credit-score').innerHTML = `Credit Score: <strong>${creditScore}</strong>`;
+            }
+
+            // Update risk tier
+            const riskLevel = riskData.risk_level || 'Unknown';
+            const tierBadge = document.getElementById('risk-tier');
+            if (riskLevel.includes('Low')) {
+                tierBadge.innerHTML = '<i class="fas fa-star"></i> GOLD TIER';
+                tierBadge.className = 'tier-badge tier-approved';
+            } else if (riskLevel.includes('Moderate')) {
+                tierBadge.innerHTML = '<i class="fas fa-star"></i> SILVER TIER';
+                tierBadge.className = 'tier-badge tier-approved';
+            } else {
+                tierBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> STANDARD TIER';
+                tierBadge.className = 'tier-badge tier-approved';
+            }
+
+            // Update risk factors
+            if (riskData.risk_factors) {
+                const riskFactorsContainer = document.getElementById('risk-factors');
+                riskFactorsContainer.innerHTML = '';
+
+                riskData.risk_factors.slice(0, 3).forEach(factor => {
+                    const statusClass = factor.impact === 'Positive' ? 'status-excellent' : 
+                                       factor.impact === 'High' ? 'status-poor' : 'status-good';
+                    const icon = factor.impact === 'Positive' ? 'fa-check-circle' : 
+                                factor.impact === 'High' ? 'fa-times-circle' : 'fa-exclamation-triangle';
+                    
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = `status-indicator ${statusClass}`;
+                    statusDiv.innerHTML = `
+                        <i class="fas ${icon}"></i> 
+                        ${factor.factor}: ${factor.impact === 'Positive' ? 'Good' : factor.impact === 'High' ? 'Risk' : 'Fair'}
+                    `;
+                    riskFactorsContainer.appendChild(statusDiv);
+                });
+            }
+        }
+
+        function updateAIDecisionSummary(finalDecision) {
+            const summaryElement = document.getElementById('ai-decision-summary');
+            
+            const decision = finalDecision.arbiter_decision || 'processing';
+            const reason = finalDecision.reason || 'Analyzing application...';
+            
+            let decisionIcon = '🤖';
+            let decisionText = 'Processing application...';
+            
+            if (decision.includes('approve')) {
+                decisionIcon = '✅';
+                decisionText = 'Application Approved!';
+            } else if (decision.includes('reject')) {
+                decisionIcon = '❌';
+                decisionText = 'Application needs review';
+            }
+            
+            summaryElement.innerHTML = `<em><strong>${decisionIcon} ${decisionText}</strong><br><br>${reason}</em>`;
+        }
+
+        function updateCreditOffers(finalTerms, aiInsights) {
+            const offersContainer = document.getElementById('credit-offers');
+            offersContainer.innerHTML = '';
+
+            // Get perks data for display
+            const perksData = aiInsights.perks?.perks || {};
+            const cardName = perksData.card_name || 'Bank of Anthos Credit Card';
+
+            const offerCard = document.createElement('div');
+            offerCard.className = 'offer-card approved';
+            
+            // Build rewards structure from final terms
+            let rewardsHTML = '';
+            if (finalTerms.reward_structure) {
+                const rewards = finalTerms.reward_structure;
+                rewardsHTML = `
+                    <h5 style="color: #00d632; margin: 16px 0 8px 0;"><i class="fas fa-percentage"></i> Cashback Rewards</h5>
+                    <ul class="feature-list">
+                        <li>Base Rate: ${rewards.base_cashback || 1.0}% on all purchases</li>
+                        ${rewards.bonus_categories ? rewards.bonus_categories.map(cat => 
+                            `<li>${cat.rate}% on ${cat.category} (up to $${cat.monthly_cap}/month)</li>`
+                        ).join('') : ''}
+                        ${rewards.rotating_quarterly_bonus ? 
+                            `<li>${rewards.rotating_quarterly_bonus.rate}% rotating categories (up to $${rewards.rotating_quarterly_bonus.monthly_cap}/month)</li>` : ''}
+                    </ul>
+                `;
+            }
+
+            // Build engagement perks
+            let perksHTML = '';
+            if (finalTerms.engagement_perks?.digital_benefits) {
+                perksHTML = `
+                    <h5 style="color: #00d632; margin: 16px 0 8px 0;"><i class="fas fa-star"></i> Premium Benefits</h5>
+                    <ul class="feature-list">
+                        ${finalTerms.engagement_perks.digital_benefits.slice(0, 4).map(benefit => 
+                            `<li>${benefit}</li>`
+                        ).join('')}
+                    </ul>
+                `;
+            }
+
+            offerCard.innerHTML = `
+                <div class="tier-badge tier-approved">
+                    <i class="fas fa-robot"></i> AI-Approved Offer
+                </div>
+                <h3 style="color: #ffffff; margin-bottom: 16px;">${cardName}</h3>
+                
+                <div style="background: #2a2a2a; border-radius: 12px; padding: 16px; margin: 16px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #00d632;">${finalTerms.apr_rate}%</div>
+                            <div style="color: #a1a1a1; font-size: 0.85rem;">APR</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #00d632;">$${finalTerms.credit_limit?.toLocaleString()}</div>
+                            <div style="color: #a1a1a1; font-size: 0.85rem;">Credit Limit</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #00d632;">$${finalTerms.annual_fee}</div>
+                            <div style="color: #a1a1a1; font-size: 0.85rem;">Annual Fee</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #00d632;">${finalTerms.grace_period_days}</div>
+                            <div style="color: #a1a1a1; font-size: 0.85rem;">Grace Period</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${rewardsHTML}
+                ${perksHTML}
+
+                ${finalTerms.promotional_offers ? `
+                    <div style="background: linear-gradient(135deg, #00d632, #00c42e); color: #000000; border-radius: 12px; padding: 16px; margin: 16px 0; font-weight: 600; text-align: center;">
+                        <i class="fas fa-gift"></i> ${finalTerms.promotional_offers[0]?.title || 'Special Offer Available'}
+                    </div>
+                ` : ''}
+
+                <button class="btn" onclick="proceedToApplication()">
+                    <i class="fas fa-credit-card"></i> Accept Offer & Apply
+                </button>
+            `;
+
+            offersContainer.appendChild(offerCard);
+        }
+
+        function updatePolicyDocuments(policyData) {
+            const complianceScore = document.getElementById('compliance-score');
+            const documentGrid = document.getElementById('document-grid');
+            
+            if (policyData.compliance_check) {
+                complianceScore.textContent = `${policyData.compliance_check.compliance_score}% Regulatory Compliant`;
+            }
+            
+            if (policyData.documents) {
+                documentGrid.innerHTML = '';
+                
+                const documentIcons = {
+                    'credit_card_agreement': 'fa-file-contract',
+                    'terms_and_conditions': 'fa-file-alt',
+                    'privacy_policy': 'fa-shield-alt',
+                    'fee_schedule': 'fa-file-invoice-dollar',
+                    'application_summary': 'fa-file-signature',
+                    'regulatory_disclosures': 'fa-balance-scale'
+                };
+                
+                Object.entries(policyData.documents).forEach(([docType, docData]) => {
+                    const docCard = document.createElement('div');
+                    docCard.className = 'document-card';
+                    
+                    const icon = documentIcons[docType] || 'fa-file';
+                    const title = docData.document_type || docType.replace(/_/g, ' ').toUpperCase();
+                    const preview = docData.content ? 
+                        docData.content.substring(0, 100).replace(/\\n/g, ' ') + '...' : 
+                        'Document content available';
+                    
+                    docCard.innerHTML = `
+                        <div class="document-title">
+                            <i class="fas ${icon}"></i>
+                            ${title}
+                        </div>
+                        <div class="document-preview">${preview}</div>
+                        <button class="btn-secondary" onclick="viewDocument('${docType}')">
+                            <i class="fas fa-eye"></i> View Full Document
+                        </button>
+                    `;
+                    
+                    documentGrid.appendChild(docCard);
+                });
+            }
+        }
+
+        function viewDocument(docType) {
+            if (!fullData?.ai_insights?.policy_documents?.documents?.[docType]) {
+                alert('Document not available');
+                return;
+            }
+            
+            const doc = fullData.ai_insights.policy_documents.documents[docType];
+            const content = doc.content || JSON.stringify(doc, null, 2);
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.95); z-index: 1000; 
+                display: flex; align-items: center; justify-content: center;
+                padding: 20px;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #1a1a1a; border-radius: 16px; padding: 30px; max-width: 800px; max-height: 80vh; overflow-y: auto; border: 1px solid #333;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: #fff; margin: 0;">${doc.document_type || docType}</h3>
+                        <button onclick="this.closest('div').parentElement.remove()" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0;">&times;</button>
+                    </div>
+                    <div style="color: #a1a1a1; line-height: 1.6; white-space: pre-wrap; font-size: 0.9rem;">${content.replace(/\\n/g, '\n')}</div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        function proceedToApplication() {
+            alert('🎉 In a real implementation, this would redirect to the secure application completion and e-signature process!');
+        }
+
+        function showFallbackDemo() {
+            // Fallback demo content
+            document.getElementById('ai-decision-summary').innerHTML = '<em>🤖 <strong>Demo Mode:</strong> AI analysis temporarily unavailable. Showing sample results.</em>';
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            // Don't auto-run, let user click the button
+        });
+    </script>
+</body>
+</html>

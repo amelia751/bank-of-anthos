@@ -315,6 +315,143 @@ def get_balance():
         'timestamp': balance.timestamp
     })
 
+@app.route('/policies', methods=['GET'])
+def get_banking_policies():
+    """Get comprehensive banking policies for policy generation"""
+    return jsonify({
+        'credit_card_policies': {
+            'minimum_payment': 'Greater of $25 or 2% of balance',
+            'payment_due_date': '25 days from statement date',
+            'late_payment_grace_period': '25 days from statement date',
+            'overlimit_policy': 'Overlimit transactions may be declined or subject to fees',
+            'dispute_resolution_period': '60 days from statement date to dispute charges',
+            'account_closure_notice': '30 days written notice required for closure',
+            'interest_calculation': 'Daily periodic rate applied to average daily balance',
+            'statement_cycle': 'Monthly statements generated on the same date each month',
+            'payment_allocation': 'Payments applied to highest APR balances first',
+            'credit_limit_increases': 'Automatic reviews every 6 months for qualified accounts',
+            'cash_advance_limits': 'Generally 20% of credit limit or $100 minimum',
+            'foreign_transactions': 'Subject to foreign transaction fees and currency conversion'
+        },
+        'regulatory_requirements': {
+            'tila_disclosures': {
+                'apr_disclosure': 'Annual Percentage Rate must be clearly disclosed',
+                'finance_charge_disclosure': 'Finance charges must be itemized on statements',
+                'payment_terms': 'Payment due dates and minimum payment calculations must be clear',
+                'penalty_terms': 'Penalty rates and fees must be disclosed upfront',
+                'right_to_cancel': '3-day right to cancel certain credit transactions'
+            },
+            'fcra_compliance': {
+                'credit_reporting': 'Credit reporting practices must comply with FCRA requirements',
+                'adverse_action_notices': 'Required when credit is denied or terms changed',
+                'dispute_procedures': 'Customers have right to dispute credit report information',
+                'identity_theft_protection': 'Fraud alerts and credit freezes must be honored'
+            },
+            'ecoa_compliance': {
+                'equal_opportunity': 'Credit decisions cannot discriminate on prohibited bases',
+                'prohibited_factors': 'Race, color, religion, national origin, sex, marital status, age',
+                'notification_requirements': 'Adverse action notices must include ECOA rights',
+                'record_retention': 'Application records must be retained per ECOA requirements'
+            },
+            'card_act_2009': {
+                'rate_increase_notice': '45 days advance notice required for rate increases',
+                'payment_allocation': 'Payments above minimum must go to highest rate balances',
+                'due_date_requirements': 'Due dates must be same each month, at least 21 days notice',
+                'fee_limitations': 'Certain fees limited to reasonable and proportional amounts',
+                'young_adult_protections': 'Special requirements for applicants under 21'
+            }
+        },
+        'bank_policies': {
+            'data_retention': {
+                'financial_records': '7 years minimum retention for financial transaction records',
+                'application_records': '25 months for approved applications, 12 months for denied',
+                'customer_communications': '3 years for customer service interactions',
+                'compliance_records': '5 years for regulatory compliance documentation'
+            },
+            'fraud_protection': {
+                'monitoring': '24/7 real-time transaction monitoring',
+                'liability_protection': 'Zero liability for unauthorized transactions when reported promptly',
+                'notification_methods': 'Email, SMS, and phone alerts for suspicious activity',
+                'card_replacement': 'Emergency card replacement available 24/7'
+            },
+            'customer_service': {
+                'availability': '24/7 customer service via phone, chat, and mobile app',
+                'response_times': 'Phone calls answered within 2 minutes during business hours',
+                'dispute_resolution': 'Disputes resolved within 30 days of receipt',
+                'accessibility': 'TTY services available for hearing impaired customers'
+            },
+            'account_management': {
+                'online_access': 'Free online and mobile banking included with all accounts',
+                'statement_delivery': 'Electronic statements default, paper available for $2/month',
+                'payment_methods': 'Online, phone, mail, and automatic payments accepted',
+                'account_alerts': 'Customizable balance and transaction alerts available'
+            },
+            'privacy_practices': {
+                'information_sharing': 'Limited sharing with affiliates and service providers only',
+                'opt_out_rights': 'Customers may opt out of marketing communications',
+                'data_security': 'Bank-level encryption and security measures for all data',
+                'third_party_access': 'Strict controls on third-party access to customer information'
+            }
+        },
+        'legal_disclaimers': {
+            'general_terms': [
+                'Terms subject to change with appropriate notice as required by law',
+                'Agreements governed by federal law and laws of account opening state',
+                'Bank reserves right to close accounts for policy violations',
+                'FDIC insured up to applicable limits'
+            ],
+            'liability_limitations': [
+                'Bank not liable for merchant disputes or product/service quality',
+                'Customer responsible for maintaining account security',
+                'Limitations on bank liability for system outages or technical issues'
+            ],
+            'dispute_resolution': [
+                'Binding arbitration clause for disputes over $25,000',
+                'Small claims court option available for smaller disputes',
+                'Class action waiver except where prohibited by law'
+            ]
+        },
+        'compliance_frameworks': [
+            'Truth in Lending Act (TILA)',
+            'Fair Credit Reporting Act (FCRA)', 
+            'Equal Credit Opportunity Act (ECOA)',
+            'Fair Debt Collection Practices Act (FDCPA)',
+            'Credit CARD Act of 2009',
+            'Gramm-Leach-Bliley Act (GLBA)',
+            'Bank Secrecy Act (BSA)',
+            'USA PATRIOT Act',
+            'Consumer Financial Protection Bureau (CFPB) regulations',
+            'State banking regulations'
+        ],
+        'document_requirements': {
+            'credit_card_agreement': [
+                'APR and interest rate disclosures',
+                'Fee schedule and penalty terms', 
+                'Payment terms and billing cycle information',
+                'Default and penalty rate conditions',
+                'Cardholder rights and responsibilities',
+                'Dispute resolution procedures',
+                'Privacy policy reference'
+            ],
+            'privacy_policy': [
+                'Types of information collected',
+                'How information is used and shared',
+                'Customer choices and opt-out rights',
+                'Security measures and data protection',
+                'Contact information for privacy concerns',
+                'Updates and changes to policy'
+            ],
+            'terms_and_conditions': [
+                'Account eligibility requirements',
+                'Card usage terms and restrictions',
+                'Rewards program terms (if applicable)',
+                'Account maintenance and closure procedures',
+                'Modification of terms procedures',
+                'Governing law and jurisdiction'
+            ]
+        }
+    })
+
 @app.route('/mcp/tools', methods=['GET'])
 @require_api_key
 def list_tools():
@@ -335,10 +472,15 @@ def list_tools():
                 'parameters': {
                     'userId': 'User ID to get balance for'
                 }
+            },
+            {
+                'name': 'get_banking_policies',
+                'description': 'Get comprehensive banking policies for document generation',
+                'parameters': {}
             }
         ]
     })
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 8080))
+    port = int(os.getenv('PORT', 8089))  # Changed to 8089 to avoid conflict
     app.run(host='0.0.0.0', port=port, debug=False)

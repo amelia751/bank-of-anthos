@@ -1,0 +1,352 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enhanced-risk-agent-code
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    import json
+    import logging
+    import os
+    import requests
+    import statistics
+    from datetime import datetime, timedelta
+    from typing import Dict, List, Optional, Tuple
+    from dataclasses import dataclass
+    from flask import Flask, jsonify, request
+    import numpy as np
+
+    try:
+        import google.generativeai as genai
+        GEMINI_AVAILABLE = True
+    except ImportError:
+        GEMINI_AVAILABLE = False
+        logging.warning("Google Generative AI not available - using rule-based decisions")
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    @dataclass
+    class CreditAssessment:
+        user_id: str
+        score: int
+        tier: str
+        risk_factors: Dict
+        eligibility: Dict
+        confidence: float
+
+    @dataclass
+    class FinancialFeatures:
+        monthly_net_inflow: float
+        avg_balance: float
+        min_balance: float
+        max_balance: float
+        income_stability: float
+        nsf_events: int
+        expense_ratio: float
+        payment_consistency: float
+        category_spending: Dict[str, float]
+
+    class RiskAnalyzer:
+        def __init__(self):
+            self.mcp_url = os.getenv('MCP_SERVER_URL', 'http://boa-mcp:8080')
+            self.mcp_api_key = os.getenv('MCP_API_KEY', 'mcp-demo-key-123')
+            
+            if GEMINI_AVAILABLE:
+                api_key = os.getenv('GEMINI_API_KEY', 'demo-key')
+                if api_key and api_key != 'demo-key':
+                    try:
+                        genai.configure(api_key=api_key)
+                        self.model = genai.GenerativeModel('gemini-1.5-flash')
+                        logger.info("✅ Gemini API initialized for risk reasoning")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Gemini API failed: {e}")
+                        self.model = None
+                else:
+                    logger.info("📝 Using rule-based decisions (no Gemini API key)")
+                    self.model = None
+            else:
+                self.model = None
+            
+            self.score_weights = {
+                'income_stability': 0.25,
+                'cash_flow': 0.20,
+                'balance_management': 0.20,
+                'payment_consistency': 0.15,
+                'expense_ratio': 0.20
+            }
+            
+            self.tiers = {
+                'Bronze': {'min_score': 0, 'max_score': 599},
+                'Silver': {'min_score': 600, 'max_score': 699},
+                'Gold': {'min_score': 700, 'max_score': 850}
+            }
+
+        def make_approval_decision(self, assessment, spending_data):
+            approval_score = assessment.score
+            risk_factors = assessment.risk_factors
+            
+            if approval_score >= 680 and risk_factors.get('nsf_frequency', 0) < 2:
+                decision = 'APPROVED'
+                risk_level = 'Low Risk'
+            elif approval_score >= 620 and risk_factors.get('expense_ratio', 1) < 0.8:
+                decision = 'APPROVED'
+                risk_level = 'Moderate Risk'
+            elif approval_score >= 580:
+                decision = 'CONDITIONAL_APPROVAL'
+                risk_level = 'Higher Risk'
+            else:
+                decision = 'REJECTED'
+                risk_level = 'High Risk'
+            
+            reasoning = self._generate_reasoning(assessment, spending_data, decision, risk_level)
+            
+            risk_factors_display = []
+            
+            if risk_factors.get('income_stability', 0) > 0.7:
+                risk_factors_display.append({
+                    'factor': 'Income Stability', 
+                    'impact': 'Positive',
+                    'description': 'Consistent income pattern'
+                })
+            elif risk_factors.get('income_stability', 0) < 0.4:
+                risk_factors_display.append({
+                    'factor': 'Income Stability', 
+                    'impact': 'High',
+                    'description': 'Irregular income pattern'
+                })
+            else:
+                risk_factors_display.append({
+                    'factor': 'Income Stability', 
+                    'impact': 'Moderate',
+                    'description': 'Moderate income consistency'
+                })
+                
+            if risk_factors.get('expense_ratio', 1) < 0.5:
+                risk_factors_display.append({
+                    'factor': 'Spending Control', 
+                    'impact': 'Positive',
+                    'description': 'Good expense management'
+                })
+            elif risk_factors.get('expense_ratio', 1) > 0.8:
+                risk_factors_display.append({
+                    'factor': 'Spending Control', 
+                    'impact': 'High',
+                    'description': 'High expense ratio'
+                })
+            else:
+                risk_factors_display.append({
+                    'factor': 'Spending Control', 
+                    'impact': 'Moderate',
+                    'description': 'Moderate spending patterns'
+                })
+                
+            if risk_factors.get('payment_reliability', 0) > 0.8:
+                risk_factors_display.append({
+                    'factor': 'Payment History', 
+                    'impact': 'Positive',
+                    'description': 'Excellent payment consistency'
+                })
+            elif risk_factors.get('payment_reliability', 0) < 0.6:
+                risk_factors_display.append({
+                    'factor': 'Payment History', 
+                    'impact': 'High',
+                    'description': 'Inconsistent payment patterns'
+                })
+            else:
+                risk_factors_display.append({
+                    'factor': 'Payment History', 
+                    'impact': 'Moderate',
+                    'description': 'Adequate payment history'
+                })
+            
+            return {
+                'decision': decision,
+                'risk_level': risk_level,
+                'risk_score': assessment.score,
+                'reasoning': reasoning,
+                'risk_factors': risk_factors_display,
+                'confidence': assessment.confidence,
+                'tier': assessment.tier,
+                'eligibility': assessment.eligibility,
+                'generated_at': datetime.now().isoformat(),
+                'agent': 'risk-agent'
+            }
+
+        def _generate_reasoning(self, assessment, spending_data, decision, risk_level):
+            if self.model:
+                try:
+                    prompt = f"""
+                    As a senior credit risk analyst, provide a professional assessment explanation for this credit application decision:
+                    
+                    APPLICANT PROFILE:
+                    - Credit Score: {assessment.score}
+                    - Risk Tier: {assessment.tier}
+                    - Confidence Level: {assessment.confidence:.1%}
+                    
+                    FINANCIAL METRICS:
+                    - Income Stability: {assessment.risk_factors.get('income_stability', 0):.1%}
+                    - Expense Ratio: {assessment.risk_factors.get('expense_ratio', 0):.1%}
+                    - Payment Consistency: {assessment.risk_factors.get('payment_reliability', 0):.1%}
+                    - NSF Frequency: {assessment.risk_factors.get('nsf_frequency', 0)} per month
+                    - Balance Volatility: {assessment.risk_factors.get('balance_volatility', 0):.1%}
+                    
+                    SPENDING ANALYSIS:
+                    - Total Monthly Spending: ${spending_data.get('total_spending', 0):,.0f}
+                    - Transaction Count: {spending_data.get('transaction_count', 0)}
+                    - Primary Categories: {', '.join(list(spending_data.get('spending_categories', {}).keys())[:3])}
+                    
+                    DECISION: {decision}
+                    RISK LEVEL: {risk_level}
+                    
+                    Provide a 2-3 sentence professional explanation that covers:
+                    1. The primary factors that led to this decision
+                    2. Key strengths or concerns identified
+                    3. Any specific conditions or recommendations
+                    
+                    Keep it clear, professional, and customer-friendly. Focus on the most important factors.
+                    """
+                    
+                    response = self.model.generate_content(prompt)
+                    return response.text.strip()
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Gemini reasoning failed: {e}")
+                    pass
+            
+            # Rule-based reasoning fallback
+            if decision == 'APPROVED':
+                if assessment.score >= 700:
+                    return f"Application approved based on excellent credit profile (Score: {assessment.score}). Strong financial stability with consistent income patterns and responsible spending behavior demonstrate low credit risk."
+                else:
+                    return f"Application approved with moderate risk assessment (Score: {assessment.score}). Good financial management and payment history support creditworthiness despite some minor risk factors."
+            elif decision == 'CONDITIONAL_APPROVAL':
+                return f"Conditional approval granted (Score: {assessment.score}). While some risk factors require monitoring, overall financial profile supports limited credit extension with appropriate terms and conditions."
+            else:
+                return f"Application requires additional review (Score: {assessment.score}). Current financial profile presents elevated risk factors that need further assessment before credit extension can be considered."
+
+        def analyze_risk(self, user_id, months=6):
+            # Simplified version for demo - returns mock assessment
+            mock_assessment = CreditAssessment(
+                user_id=user_id,
+                score=720,
+                tier='Gold',
+                risk_factors={
+                    'income_stability': 0.85,
+                    'balance_volatility': 0.2,
+                    'expense_ratio': 0.45,
+                    'nsf_frequency': 0,
+                    'payment_reliability': 0.9
+                },
+                eligibility={'credit_card': {'eligible': True, 'limit_range': [5000, 25000]}},
+                confidence=0.88
+            )
+            return mock_assessment
+
+    app = Flask(__name__)
+    analyzer = RiskAnalyzer()
+
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({'status': 'healthy', 'service': 'enhanced-risk-agent', 'gemini_available': GEMINI_AVAILABLE}), 200
+
+    @app.route('/approve', methods=['POST'])
+    def approve_application():
+        data = request.get_json()
+        user_id = data.get('user_id', 'testuser')
+        spending_data = data.get('spending_data', {})
+        months = data.get('months', 6)
+        
+        try:
+            assessment = analyzer.analyze_risk(user_id, months)
+            decision_result = analyzer.make_approval_decision(assessment, spending_data)
+            
+            logger.info(f"🎯 Risk Agent Decision for {user_id}: {decision_result['decision']} ({decision_result['risk_level']})")
+            
+            return jsonify(decision_result)
+            
+        except Exception as e:
+            logger.error(f"Error in approval decision: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/assess', methods=['POST'])
+    def assess_risk():
+        data = request.get_json()
+        user_id = data.get('user_id', 'testuser')
+        months = data.get('months', 6)
+        
+        try:
+            assessment = analyzer.analyze_risk(user_id, months)
+            
+            return jsonify({
+                'user_id': assessment.user_id,
+                'score': assessment.score,
+                'tier': assessment.tier,
+                'risk_factors': assessment.risk_factors,
+                'eligibility': assessment.eligibility,
+                'confidence': assessment.confidence,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in risk assessment: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    if __name__ == '__main__':
+        port = int(os.getenv('PORT', 8087))
+        app.run(host='0.0.0.0', port=port, debug=False)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-risk-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enhanced-risk-agent
+  template:
+    metadata:
+      labels:
+        app: enhanced-risk-agent
+    spec:
+      containers:
+      - name: risk-agent
+        image: python:3.12-slim
+        ports:
+        - containerPort: 8087
+        env:
+        - name: PORT
+          value: "8087"
+        - name: GEMINI_API_KEY
+          value: "demo-key"
+        command: ["/bin/bash"]
+        args: ["-c", "pip install flask requests numpy google-generativeai gunicorn && cd /app && python app.py"]
+        volumeMounts:
+        - name: risk-agent-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: risk-agent-code
+        configMap:
+          name: enhanced-risk-agent-code
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: enhanced-risk-agent
+spec:
+  selector:
+    app: enhanced-risk-agent
+  ports:
+  - port: 8087
+    targetPort: 8087
+  type: ClusterIP

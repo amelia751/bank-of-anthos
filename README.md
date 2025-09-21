@@ -265,14 +265,72 @@ kubectl wait --for=condition=ready pod --all --timeout=300s
 cd boa-ai-agents/frontend-widget && PORT=8084 python3 enhanced-demo.py
 ```
 
+## 🔄 Server Restart Instructions (Cloud Deployment)
+
+If you deployed the AI-enhanced demo to the cloud and need to restart servers:
+
+### Quick Restart All Servers
+```bash
+# Restart all AI agents, backend, and frontend (recommended)
+kubectl delete pods -l app=perks-agent-real
+kubectl delete pods -l app=risk-agent-simple  
+kubectl delete pods -l app=terms-agent-simple
+kubectl delete pods -l app=reliable-backend
+kubectl delete pods -l app=frontend-ui
+
+# Wait for all services to restart
+kubectl wait --for=condition=ready --timeout=60s pod -l app=perks-agent-real
+kubectl wait --for=condition=ready --timeout=60s pod -l app=risk-agent-simple
+kubectl wait --for=condition=ready --timeout=60s pod -l app=terms-agent-simple
+kubectl wait --for=condition=ready --timeout=60s pod -l app=reliable-backend
+kubectl wait --for=condition=ready --timeout=60s pod -l app=frontend-ui
+
+# Clear backend cache
+curl -s "http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/api/clear-cache"
+```
+
+### Individual Server Restart Commands
+```bash
+# Restart only AI agents
+kubectl delete pods -l app=perks-agent-real,app=risk-agent-simple,app=terms-agent-simple
+
+# Restart only backend
+kubectl delete pods -l app=reliable-backend
+
+# Restart only frontend
+kubectl delete pods -l app=frontend-ui
+
+# Check status
+kubectl get pods,services | grep -E "(perks|risk|terms|reliable|frontend)"
+```
+
+### After Restart - Access Points
+```bash
+# Get frontend URL (your main UI)
+echo "Frontend UI: http://$(kubectl get service frontend-ui -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+
+# Get backend API URL  
+echo "Backend API: http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+
+# Test all systems
+curl -s "http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/api/real-preapproval?username=testuser" | jq '{balance: .current_balance, spending: .total_spending, ai_agents: .ai_insights.ai_agents_status}'
+```
+
+### Troubleshooting After Restart
+- **Frontend shows cached data**: Hard refresh browser (Ctrl+F5 or Cmd+Shift+R)
+- **AI agents not responding**: Wait 1-2 minutes for full startup
+- **Empty spending data**: Backend cache may be stale, use clear-cache command above
+
 ### AI Agent Architecture
 
 ```
-📱 Frontend Widget (8084) ←→ 🏦 Bank of Anthos Services
-    ↓                           ├── userservice (8080)
-🎁 Perks Agent (8083)          ├── balancereader (8081)
-🎯 Risk Agent (8085)           └── transactionhistory (8082)
-📋 Terms Agent (8086)
+📱 Frontend UI (Cloud) ←→ 🏦 Bank of Anthos Services
+    ↓                        ├── userservice (8080)
+🎁 Perks Agent (Real)       ├── balancereader (8081)
+🎯 Risk Agent (Simple)      └── transactionhistory (8082)
+📋 Terms Agent (Simple)
+    ↓
+🔄 Reliable Backend (API Gateway)
 ```
 
 ### Documentation

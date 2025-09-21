@@ -1,0 +1,564 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: challenger-agent-code
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    """
+    Counterfactual/Challenger Pricing Agent
+    Stress-tests Terms Agent proposals with bank economics and risk scenarios
+    """
+
+    import json
+    import logging
+    import math
+    import os
+    import random
+    from datetime import datetime
+    from typing import Dict, List, Tuple, Any
+    from flask import Flask, request, jsonify
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
+    app = Flask(__name__)
+
+    class ChallengerAgent:
+        def __init__(self):
+            # Bank policy constraints (prioritizing profitability)
+            self.constraints = {
+                'min_roe': 0.12,  # 12% ROE floor (realistic for credit cards)
+                'max_loss_rate': 0.06,  # 6% loss rate ceiling (tighter control)
+                'max_perk_budget_monthly': 35,  # $35/user/month perk budget (reduced)
+                'min_apr': 14.99,  # Higher minimum APR for profitability
+                'max_apr': 29.99,
+                'cof_base': 0.04,  # 4% cost of funds base
+                'ops_cost': 15,  # $15/month operational cost per account
+            }
+            
+            # Economic parameters
+            self.params = {
+                'interchange_rate': 0.018,  # 1.8% interchange on spend
+                'perk_cost_multiplier': 0.035,  # 3.5% cost on eligible spend
+                'lgd': 0.45,  # 45% Loss Given Default
+                'capital_ratio': 0.08,  # 8% capital requirement
+            }
+
+        def analyze_proposal(self, terms_proposal: Dict, risk_data: Dict, spending_data: Dict) -> Dict:
+            """
+            Main analysis function that stress-tests a Terms Agent proposal
+            """
+            try:
+                logger.info(f"🔍 Challenger Agent analyzing proposal: APR={terms_proposal.get('apr_rate')}%, Limit=${terms_proposal.get('credit_limit')}")
+                
+                # Extract key metrics
+                base_scenario = self._build_base_scenario(terms_proposal, risk_data, spending_data)
+                
+                # Run stress tests
+                stress_results = self._run_stress_tests(base_scenario)
+                
+                # Check constraints
+                constraint_violations = self._check_constraints(base_scenario, stress_results)
+                
+                # Generate counter-offer if needed
+                decision = self._make_decision(base_scenario, stress_results, constraint_violations, terms_proposal)
+                
+                return {
+                    'agent': 'challenger-agent',
+                    'analysis_timestamp': datetime.now().isoformat(),
+                    'original_proposal': terms_proposal,
+                    'base_economics': base_scenario,
+                    'stress_test_results': stress_results,
+                    'constraint_violations': constraint_violations,
+                    'decision': decision,
+                    'confidence': 95
+                }
+                
+            except Exception as e:
+                logger.error(f"❌ Error in challenger analysis: {e}")
+                return {
+                    'agent': 'challenger-agent',
+                    'error': str(e),
+                    'decision': {'action': 'reject', 'reason': 'Analysis failed'}
+                }
+
+        def _build_base_scenario(self, terms: Dict, risk: Dict, spending: Dict) -> Dict:
+            """Build base case economics scenario"""
+            
+            # Extract metrics
+            credit_limit = terms.get('credit_limit', 15000)
+            apr = terms.get('apr_rate', 18.99) / 100
+            monthly_spend = spending.get('total_spending', 5000) / 12  # Annualize to monthly
+            pd = self._extract_pd_from_risk(risk)
+            
+            # Assume 30% utilization and 50% revolving
+            avg_balance = credit_limit * 0.3
+            revolving_balance = avg_balance * 0.5
+            
+            # Calculate revenues
+            interchange_revenue = monthly_spend * self.params['interchange_rate']
+            interest_revenue = revolving_balance * (apr / 12)
+            
+            # Fee revenues
+            annual_fee = terms.get('annual_fee', 0)
+            late_fee = terms.get('late_fee', 0)
+            cash_advance_fee_base = 25 if 'cash_advance_fee' in terms else 0
+            
+            # Estimate fee income (annual fee + late fees + cash advance fees)
+            monthly_fee_revenue = (annual_fee / 12) + (late_fee * 0.08) + (cash_advance_fee_base * 0.02)  # 8% late rate, 2% cash advance rate
+            
+            # Calculate costs
+            perk_eligible_spend = monthly_spend * 0.6  # 60% eligible for perks
+            perk_costs = perk_eligible_spend * self.params['perk_cost_multiplier']
+            expected_loss = pd * self.params['lgd'] * avg_balance / 12
+            funding_cost = avg_balance * (self.constraints['cof_base'] / 12)
+            ops_cost = self.constraints['ops_cost']
+            
+            # Unit economics
+            total_revenue = interchange_revenue + interest_revenue + monthly_fee_revenue
+            total_costs = perk_costs + expected_loss + funding_cost + ops_cost
+            profit = total_revenue - total_costs
+            
+            # ROE calculation
+            capital_requirement = credit_limit * self.params['capital_ratio']
+            roe = (profit * 12) / capital_requirement if capital_requirement > 0 else 0
+            
+            # Loss rate
+            loss_rate = (expected_loss * 12) / avg_balance if avg_balance > 0 else 0
+            
+            return {
+                'monthly_spend': monthly_spend,
+                'avg_balance': avg_balance,
+                'revolving_balance': revolving_balance,
+                'pd': pd,
+                'revenues': {
+                    'interchange': interchange_revenue,
+                    'interest': interest_revenue,
+                    'fees': monthly_fee_revenue,
+                    'total': total_revenue
+                },
+                'costs': {
+                    'perks': perk_costs,
+                    'expected_loss': expected_loss,
+                    'funding': funding_cost,
+                    'operations': ops_cost,
+                    'total': total_costs
+                },
+                'profit_monthly': profit,
+                'profit_annual': profit * 12,
+                'roe': roe,
+                'loss_rate': loss_rate,
+                'capital_requirement': capital_requirement
+            }
+
+        def _run_stress_tests(self, base: Dict) -> Dict:
+            """Run stress test scenarios"""
+            
+            scenarios = {}
+            
+            # Scenario 1: Spend down 20%
+            spend_stress = base.copy()
+            spend_stress['monthly_spend'] *= 0.8
+            spend_stress['revenues']['interchange'] *= 0.8
+            spend_stress['costs']['perks'] *= 0.8
+            spend_stress['profit_monthly'] = spend_stress['revenues']['interchange'] + spend_stress['revenues']['interest'] - sum(spend_stress['costs'].values())
+            spend_stress['roe'] = (spend_stress['profit_monthly'] * 12) / base['capital_requirement']
+            scenarios['spend_down_20pct'] = spend_stress
+            
+            # Scenario 2: Default probability up 1.5x
+            default_stress = base.copy()
+            default_stress['pd'] *= 1.5
+            default_stress['costs']['expected_loss'] *= 1.5
+            default_stress['costs']['total'] = sum([v for k, v in default_stress['costs'].items() if k != 'total'])
+            default_stress['profit_monthly'] = default_stress['revenues']['total'] - default_stress['costs']['total']
+            default_stress['roe'] = (default_stress['profit_monthly'] * 12) / base['capital_requirement']
+            default_stress['loss_rate'] = (default_stress['costs']['expected_loss'] * 12) / base['avg_balance']
+            scenarios['default_up_1_5x'] = default_stress
+            
+            # Scenario 3: Cost of funds up 100bps
+            cof_stress = base.copy()
+            cof_stress['costs']['funding'] = base['avg_balance'] * ((self.constraints['cof_base'] + 0.01) / 12)
+            cof_stress['costs']['total'] = sum([v for k, v in cof_stress['costs'].items() if k != 'total'])
+            cof_stress['profit_monthly'] = cof_stress['revenues']['total'] - cof_stress['costs']['total']
+            cof_stress['roe'] = (cof_stress['profit_monthly'] * 12) / base['capital_requirement']
+            scenarios['cof_up_100bps'] = cof_stress
+            
+            # Scenario 4: Perk usage maxed (assume 90% vs 60% eligible spend)
+            perk_stress = base.copy()
+            perk_stress['costs']['perks'] = base['monthly_spend'] * 0.9 * self.params['perk_cost_multiplier']
+            perk_stress['costs']['total'] = sum([v for k, v in perk_stress['costs'].items() if k != 'total'])
+            perk_stress['profit_monthly'] = perk_stress['revenues']['total'] - perk_stress['costs']['total']
+            perk_stress['roe'] = (perk_stress['profit_monthly'] * 12) / base['capital_requirement']
+            scenarios['perk_usage_maxed'] = perk_stress
+            
+            return scenarios
+
+        def _check_constraints(self, base: Dict, stress: Dict) -> List[Dict]:
+            """Check constraint violations"""
+            violations = []
+            
+            # Check ROE constraint
+            if base['roe'] < self.constraints['min_roe']:
+                violations.append({
+                    'constraint': 'min_roe',
+                    'required': self.constraints['min_roe'],
+                    'actual': base['roe'],
+                    'severity': 'high'
+                })
+            
+            # Check loss rate constraint
+            if base['loss_rate'] > self.constraints['max_loss_rate']:
+                violations.append({
+                    'constraint': 'max_loss_rate',
+                    'required': self.constraints['max_loss_rate'],
+                    'actual': base['loss_rate'],
+                    'severity': 'high'
+                })
+            
+            # Check perk budget
+            if base['costs']['perks'] > self.constraints['max_perk_budget_monthly']:
+                violations.append({
+                    'constraint': 'max_perk_budget',
+                    'required': self.constraints['max_perk_budget_monthly'],
+                    'actual': base['costs']['perks'],
+                    'severity': 'medium'
+                })
+            
+            # Check stress test violations
+            for scenario_name, scenario in stress.items():
+                if scenario['roe'] < self.constraints['min_roe'] * 0.8:  # 80% of min ROE in stress
+                    violations.append({
+                        'constraint': f'stress_roe_{scenario_name}',
+                        'required': self.constraints['min_roe'] * 0.8,
+                        'actual': scenario['roe'],
+                        'severity': 'medium'
+                    })
+            
+            return violations
+
+        def _make_decision(self, base: Dict, stress: Dict, violations: List, original_terms: Dict) -> Dict:
+            """Make final decision: always find a creative solution"""
+            
+            high_severity_violations = [v for v in violations if v.get('severity') == 'high']
+            current_roe = base.get('roe', 0)
+            
+            if len(violations) == 0:
+                # Perfect - approve as-is
+                return {
+                    'action': 'approve_as_is',
+                    'reason': 'Proposal meets all constraints and stress tests - optimal terms',
+                    'profit_margin': base['profit_monthly'],
+                    'roe': current_roe,
+                    'confidence': 'high'
+                }
+            
+            elif current_roe >= 0.05:
+                # Marginally profitable - minor tweaks
+                counter_terms = self._generate_counter_offer(original_terms, violations, base)
+                return {
+                    'action': 'counter_offer',
+                    'reason': f'Enhanced offer with {len(counter_terms.get("adjustments", []))} strategic improvements',
+                    'violations': violations,
+                    'counter_proposal': counter_terms,
+                    'expected_improvement': self._estimate_improvement(counter_terms, original_terms),
+                    'strategy': 'optimization',
+                    'confidence': 'high'
+                }
+            
+            elif current_roe >= -0.05:
+                # Close to breakeven - creative restructuring
+                counter_terms = self._generate_counter_offer(original_terms, violations, base)
+                return {
+                    'action': 'counter_offer',
+                    'reason': f'Creative restructuring to achieve profitability - {len(violations)} opportunities identified',
+                    'violations': violations,
+                    'counter_proposal': counter_terms,
+                    'expected_improvement': self._estimate_improvement(counter_terms, original_terms),
+                    'strategy': 'creative_restructuring',
+                    'confidence': 'medium',
+                    'innovation_focus': [
+                        'Reward structure optimization',
+                        'Behavioral incentives',
+                        'Fee structure enhancement',
+                        'Cross-sell integration'
+                    ]
+                }
+            
+            else:
+                # Significantly unprofitable - alternative product recommendation
+                counter_terms = self._generate_alternative_product(original_terms, violations, base)
+                return {
+                    'action': 'alternative_product',
+                    'reason': f'Alternative product better suited to customer profile (current ROE: {current_roe:.1%})',
+                    'violations': violations,
+                    'counter_proposal': counter_terms,
+                    'expected_improvement': self._estimate_improvement(counter_terms, original_terms),
+                    'strategy': 'alternative_product_recommendation',
+                    'confidence': 'medium',
+                    'rationale': 'Customer acquisition with graduation path to premium products'
+                }
+        
+        def _generate_alternative_product(self, original: Dict, violations: List, base: Dict) -> Dict:
+            """Generate alternative product for challenging cases"""
+            
+            return {
+                'product_type': 'Secured Credit Card',
+                'apr_rate': 22.99,  # Higher but manageable
+                'credit_limit': 500,  # Low initial limit
+                'security_deposit': 500,  # Reduces risk
+                'annual_fee': 25,  # Low fee
+                'rewards': {
+                    'base_rate': 1.0,
+                    'bonus_category': 'Gas stations - 2%',
+                    'graduation_bonus': '$50 after 6 months of on-time payments'
+                },
+                'graduation_terms': {
+                    'timeline': '12 months of responsible use',
+                    'requirements': 'On-time payments and regular usage',
+                    'benefits': 'Upgrade to unsecured card with deposit refund',
+                    'credit_limit_increase': 'Up to $2,000 based on payment history'
+                },
+                'adjustments': [
+                    'Secured structure eliminates default risk',
+                    'Lower credit limit reduces exposure',
+                    'Graduation program builds long-term relationship',
+                    'Educational resources to improve financial habits'
+                ],
+                'profitability_target': 'Achieve 15%+ ROE through reduced risk and fee income'
+            }
+
+        def _generate_counter_offer(self, original: Dict, violations: List, base: Dict) -> Dict:
+            """Generate creative counter-offer with innovative reward structures to ensure profitability"""
+            
+            counter = original.copy()
+            adjustments = []
+            
+            # Calculate required profit improvement
+            current_profit = base.get('profit_monthly', 0)
+            target_profit = base.get('capital_requirement', 1000) * (self.constraints['min_roe'] / 12)  # Monthly target
+            profit_gap = target_profit - current_profit
+            
+            # STRATEGY 1: Optimize reward structure (reduce perk costs while maintaining value perception)
+            perk_violations = [v for v in violations if 'perk' in v['constraint']]
+            if perk_violations or profit_gap > 0:
+                # Create tiered cashback structure
+                counter['reward_structure'] = {
+                    'base_cashback': 1.0,  # Keep base rate
+                    'bonus_categories': [
+                        {'category': 'Groceries', 'rate': 3.0, 'monthly_cap': 500},  # Reduced from 5% with cap
+                        {'category': 'Gas', 'rate': 2.0, 'monthly_cap': 250}  # New category
+                    ],
+                    'rotating_quarterly_bonus': {
+                        'rate': 5.0,
+                        'monthly_cap': 150,  # Low cap to control costs
+                        'categories': ['Restaurants', 'Online Shopping', 'Travel', 'Pharmacies']
+                    }
+                }
+                
+                # Add annual fee to offset perk costs
+                if original.get('annual_fee', 0) == 0:
+                    counter['annual_fee'] = 95
+                    adjustments.append("Added $95 annual fee to support premium rewards program")
+                
+                adjustments.append("Redesigned reward structure with caps to control costs while maintaining value")
+            
+            # STRATEGY 2: Dynamic APR based on payment behavior
+            roe_violations = [v for v in violations if 'roe' in v['constraint']]
+            if roe_violations:
+                # Implement behavior-based APR
+                counter['dynamic_apr'] = {
+                    'intro_apr': original.get('apr_rate', 18.99),  # Keep intro rate
+                    'standard_apr': min(self.constraints['max_apr'], original.get('apr_rate', 18.99) + 1.5),
+                    'reward_apr': max(self.constraints['min_apr'], original.get('apr_rate', 18.99) - 1.0),  # Reward good behavior
+                    'conditions': {
+                        'reward_trigger': 'On-time payments for 12 months',
+                        'standard_trigger': 'Default behavior',
+                        'penalty_trigger': 'Late payment or over-limit'
+                    }
+                }
+                counter['apr_rate'] = counter['dynamic_apr']['standard_apr']
+                adjustments.append("Implemented behavior-based APR to incentivize good payment habits")
+            
+            # STRATEGY 3: Spending-based credit limit increases
+            limit_violations = [v for v in violations if 'limit' in v['constraint']]
+            if not limit_violations and profit_gap > 0:
+                counter['credit_limit_program'] = {
+                    'initial_limit': original.get('credit_limit', 15000),
+                    'automatic_increases': [
+                        {'after_months': 6, 'condition': 'On-time payments + $500 monthly spend', 'increase': 2000},
+                        {'after_months': 12, 'condition': 'On-time payments + $1000 monthly spend', 'increase': 3000}
+                    ],
+                    'max_limit': min(50000, original.get('credit_limit', 15000) * 2)
+                }
+                adjustments.append("Added automatic credit limit increases to grow interchange revenue")
+            
+            # STRATEGY 4: Fee optimization for profitability
+            if profit_gap > 20:  # Large profit gap
+                counter['fee_structure'] = {
+                    'foreign_transaction_fee': max(0, original.get('foreign_transaction_fee', 2.7)),
+                    'balance_transfer_fee': '3% or $5 minimum',
+                    'cash_advance_fee': '$10 or 5%',
+                    'late_payment_fee': min(40, original.get('late_fee', 25) + 10),
+                    'over_limit_fee': 25  # Add if not present
+                }
+                adjustments.append("Optimized fee structure to improve unit economics")
+            
+            # STRATEGY 5: Engagement-based perks (low cost, high perceived value)
+            counter['engagement_perks'] = {
+                'digital_benefits': [
+                    'Free credit score monitoring',
+                    'Spending category insights',
+                    'Fraud alerts via SMS',
+                    'Mobile payment rewards (Apple Pay/Google Pay)'
+                ],
+                'partner_discounts': [
+                    '10% off at partner merchants (cost-neutral)',
+                    'Exclusive access to sales events',
+                    'Cashback portal with 1000+ merchants'
+                ],
+                'milestone_bonuses': [
+                    {'spend_threshold': 1000, 'bonus': 25, 'frequency': 'quarterly'},
+                    {'spend_threshold': 5000, 'bonus': 100, 'frequency': 'annually'}
+                ]
+            }
+            adjustments.append("Added high-value, low-cost digital and partner benefits")
+            
+            # STRATEGY 6: Retention and cross-sell opportunities
+            counter['retention_strategy'] = {
+                'first_year_bonus': 'Spend $3000 in first 3 months, get $200 bonus',
+                'anniversary_bonus': '$50 account credit on cardmember anniversary',
+                'cross_sell_incentives': {
+                    'checking_account': '$100 bonus for opening Bank of Anthos checking',
+                    'auto_pay': '0.25% APR reduction for auto-pay from Bank of Anthos account'
+                }
+            }
+            adjustments.append("Added retention and cross-sell strategies to improve lifetime value")
+            
+            counter['adjustments'] = adjustments
+            counter['profitability_target'] = f"Designed to achieve {self.constraints['min_roe']:.1%} ROE through optimized reward structure"
+            
+            return counter
+
+        def _estimate_improvement(self, counter: Dict, original: Dict) -> Dict:
+            """Estimate improvement from counter-offer"""
+            
+            apr_improvement = (counter.get('apr_rate', 0) - original.get('apr_rate', 0)) * 100
+            limit_change = counter.get('credit_limit', 0) - original.get('credit_limit', 0)
+            
+            return {
+                'apr_increase_bps': apr_improvement,
+                'credit_limit_change': limit_change,
+                'estimated_roe_improvement': apr_improvement * 0.002,  # Rough estimate
+                'estimated_profit_improvement_monthly': apr_improvement * 5  # Rough estimate
+            }
+
+        def _extract_pd_from_risk(self, risk_data: Dict) -> float:
+            """Extract probability of default from risk assessment"""
+            
+            risk_score = risk_data.get('risk_score', 50)
+            
+            # Convert risk score to PD (higher score = higher risk)
+            if risk_score <= 20:
+                return 0.02  # 2% PD for low risk
+            elif risk_score <= 40:
+                return 0.04  # 4% PD for moderate-low risk
+            elif risk_score <= 60:
+                return 0.07  # 7% PD for moderate risk
+            elif risk_score <= 80:
+                return 0.12  # 12% PD for high risk
+            else:
+                return 0.20  # 20% PD for very high risk
+
+    # Flask routes
+    @app.route('/health', methods=['GET'])
+    def health():
+        return jsonify({"status": "healthy", "agent": "challenger-agent"})
+
+    @app.route('/challenge-terms', methods=['POST'])
+    def challenge_terms():
+        """
+        Main endpoint for challenging Terms Agent proposals
+        Expects: {
+            "terms_proposal": {...},
+            "risk_assessment": {...},
+            "spending_data": {...}
+        }
+        """
+        try:
+            data = request.get_json()
+            
+            if not data or 'terms_proposal' not in data:
+                return jsonify({"error": "Missing terms_proposal in request"}), 400
+            
+            challenger = ChallengerAgent()
+            result = challenger.analyze_proposal(
+                data['terms_proposal'],
+                data.get('risk_assessment', {}),
+                data.get('spending_data', {})
+            )
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            logger.error(f"❌ Error in challenge_terms: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    if __name__ == '__main__':
+        port = int(os.environ.get('PORT', 8088))
+        logger.info(f"🚀 Starting Challenger Agent on port {port}")
+        app.run(host='0.0.0.0', port=port, debug=False)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: challenger-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: challenger-agent
+  template:
+    metadata:
+      labels:
+        app: challenger-agent
+    spec:
+      containers:
+      - name: challenger-agent
+        image: python:3.12-slim
+        ports:
+        - containerPort: 8088
+        env:
+        - name: PORT
+          value: "8088"
+        command: ["/bin/bash"]
+        args: ["-c", "pip install flask requests python-dotenv gunicorn && cd /app && python app.py"]
+        volumeMounts:
+        - name: challenger-agent-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: challenger-agent-code
+        configMap:
+          name: challenger-agent-code
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: challenger-agent
+spec:
+  selector:
+    app: challenger-agent
+  ports:
+  - port: 8088
+    targetPort: 8088
+  type: ClusterIP

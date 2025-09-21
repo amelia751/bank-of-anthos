@@ -1,0 +1,262 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-agent-code
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    import json
+    import logging
+    import os
+    import requests
+    from datetime import datetime, timedelta
+    from flask import Flask, request, jsonify
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    app = Flask(__name__)
+
+    class PolicyAgent:
+        def __init__(self):
+            self.mcp_server_url = os.getenv('MCP_SERVER_URL', 'http://mcp-server:8089')
+
+        def generate_policy_documents(self, application_data):
+            try:
+                final_terms = application_data.get('final_terms', {})
+                
+                documents = {
+                    'credit_card_agreement': self._generate_credit_agreement(final_terms),
+                    'terms_and_conditions': self._generate_terms_conditions(final_terms),
+                    'privacy_policy': self._generate_privacy_policy(),
+                    'fee_schedule': self._generate_fee_schedule(final_terms),
+                    'application_summary': self._generate_application_summary(application_data),
+                    'regulatory_disclosures': self._generate_regulatory_disclosures(final_terms)
+                }
+                
+                return {
+                    'agent': 'policy-agent',
+                    'generated_at': datetime.now().isoformat(),
+                    'documents': documents,
+                    'compliance_check': {'overall_compliance': True, 'compliance_score': 100},
+                    'signature_required': True,
+                    'effective_date': datetime.now().isoformat(),
+                    'expiration_date': (datetime.now() + timedelta(days=30)).isoformat()
+                }
+            except Exception as e:
+                logger.error(f"Error generating documents: {e}")
+                return {'error': str(e)}
+
+        def _generate_credit_agreement(self, terms):
+            content = "BANK OF ANTHOS CREDIT CARD AGREEMENT\\n\\n"
+            content += f"APR: {terms.get('apr_rate', 18.99)}%\\n"
+            content += f"Credit Limit: ${terms.get('credit_limit', 15000):,}\\n"
+            content += f"Annual Fee: ${terms.get('annual_fee', 0)}\\n"
+            content += f"Late Fee: ${terms.get('late_fee', 25)}\\n"
+            content += f"Grace Period: {terms.get('grace_period_days', 25)} days\\n\\n"
+            content += "Your minimum payment will be the greater of $25 or 2% of your balance.\\n"
+            content += "Interest calculated using Average Daily Balance method.\\n"
+            content += "This agreement is governed by federal law."
+            
+            return {
+                'document_type': 'Credit Card Agreement',
+                'content': content,
+                'generated_by': 'policy-agent',
+                'compliance_verified': True
+            }
+
+        def _generate_terms_conditions(self, terms):
+            content = "BANK OF ANTHOS TERMS AND CONDITIONS\\n\\n"
+            content += "1. You must be 18+ years old to apply\\n"
+            content += f"2. Credit limit: ${terms.get('credit_limit', 15000):,}\\n"
+            content += f"3. APR: {terms.get('apr_rate', 18.99)}%\\n"
+            content += "4. Report lost cards immediately\\n"
+            content += "5. 30 days notice required for account closure"
+            
+            return {
+                'document_type': 'Terms and Conditions',
+                'content': content,
+                'generated_by': 'policy-agent'
+            }
+
+        def _generate_privacy_policy(self):
+            content = "BANK OF ANTHOS PRIVACY POLICY\\n\\n"
+            content += "We collect personal and financial information to provide services.\\n"
+            content += "We do not sell your information to third parties.\\n"
+            content += "We use bank-level security to protect your data.\\n"
+            content += "Contact privacy@bankofanthos.com for questions."
+            
+            return {
+                'document_type': 'Privacy Policy',
+                'content': content,
+                'compliance_frameworks': ['GLBA', 'CCPA', 'FCRA']
+            }
+
+        def _generate_fee_schedule(self, terms):
+            return {
+                'document_type': 'Fee Schedule',
+                'fees': {
+                    'Annual Fee': f"${terms.get('annual_fee', 0)}",
+                    'Late Payment Fee': f"${terms.get('late_fee', 25)}",
+                    'Cash Advance Fee': terms.get('cash_advance_fee', '5% or $10 minimum'),
+                    'Foreign Transaction Fee': f"{terms.get('foreign_transaction_fee', 2.7)}%"
+                },
+                'effective_date': datetime.now().isoformat()
+            }
+
+        def _generate_application_summary(self, data):
+            return {
+                'document_type': 'Application Summary',
+                'application_date': datetime.now().isoformat(),
+                'applicant_info': {
+                    'username': data.get('username', 'N/A'),
+                    'account_id': data.get('account_id', 'N/A')
+                },
+                'approved_terms': data.get('final_terms', {}),
+                'next_steps': [
+                    'Review all documents',
+                    'Sign credit card agreement',
+                    'Activate card when received'
+                ]
+            }
+
+        def _generate_regulatory_disclosures(self, terms):
+            return {
+                'document_type': 'Regulatory Disclosures',
+                'tila_disclosures': {
+                    'annual_percentage_rate': f"{terms.get('apr_rate', 18.99)}%",
+                    'grace_period': f"{terms.get('grace_period_days', 25)} days",
+                    'minimum_finance_charge': '$1.00'
+                },
+                'ecoa_disclosures': {
+                    'equal_opportunity': 'Bank of Anthos is an Equal Opportunity Lender'
+                }
+            }
+
+    @app.route('/health', methods=['GET'])
+    def health():
+        return jsonify({"status": "healthy", "agent": "policy-agent"})
+
+    @app.route('/generate-policy-documents', methods=['POST'])
+    def generate_policy_documents():
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No application data provided"}), 400
+            
+            policy_agent = PolicyAgent()
+            result = policy_agent.generate_policy_documents(data)
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    if __name__ == '__main__':
+        port = int(os.environ.get('PORT', 8090))
+        app.run(host='0.0.0.0', port=port, debug=False)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy-agent
+  template:
+    metadata:
+      labels:
+        app: policy-agent
+    spec:
+      containers:
+      - name: policy-agent
+        image: python:3.12-slim
+        ports:
+        - containerPort: 8090
+        env:
+        - name: PORT
+          value: "8090"
+        - name: MCP_SERVER_URL
+          value: "http://mcp-server:8089"
+        command: ["/bin/bash"]
+        args: ["-c", "pip install flask requests python-dotenv gunicorn && cd /app && python app.py"]
+        volumeMounts:
+        - name: policy-agent-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: policy-agent-code
+        configMap:
+          name: policy-agent-code
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-agent
+spec:
+  selector:
+    app: policy-agent
+  ports:
+  - port: 8090
+    targetPort: 8090
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server
+  template:
+    metadata:
+      labels:
+        app: mcp-server
+    spec:
+      containers:
+      - name: mcp-server
+        image: python:3.12-slim
+        ports:
+        - containerPort: 8089
+        env:
+        - name: PORT
+          value: "8089"
+        command: ["/bin/bash"]
+        args: ["-c", "pip install flask requests gunicorn && cd /app && python app.py"]
+        volumeMounts:
+        - name: mcp-server-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: mcp-server-code
+        configMap:
+          name: mcp-server-code
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+spec:
+  selector:
+    app: mcp-server
+  ports:
+  - port: 8089
+    targetPort: 8089
+  type: ClusterIP

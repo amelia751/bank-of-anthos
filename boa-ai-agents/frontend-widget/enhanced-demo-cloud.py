@@ -48,11 +48,11 @@ DEMO_USERS = {
     'eve': {'account_id': '1077441377', 'password': 'bankofanthos'}
 }
 
-# Bank of Anthos service URLs (using port forwards for demo)
+# Bank of Anthos service URLs (using Kubernetes service discovery for cloud deployment)
 SERVICES = {
-    'userservice': 'http://localhost:8080',
-    'balancereader': 'http://localhost:8081', 
-    'transactionhistory': 'http://localhost:8082'
+    'userservice': os.getenv('USERSERVICE_URL', 'http://userservice:8080'),
+    'balancereader': os.getenv('BALANCEREADER_URL', 'http://balancereader:8080'), 
+    'transactionhistory': os.getenv('TRANSACTIONHISTORY_URL', 'http://transactionhistory:8080')
 }
 
 class BankOfAnthosClient:

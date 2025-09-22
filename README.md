@@ -63,7 +63,7 @@ bank-of-anthos/
 User Request → Backend Orchestrator → Real-time Bank Data
      ↓
 AI Agent Pipeline:
-Risk Agent → Terms Agent → Perks Agent → Challenger Agent → Arbiter → Policy Agent
+Risk Agent → Terms Agent → Perks Agent → Challenger Agent → Arbiter Agent → Policy Agent
      ↓
 Comprehensive Credit Decision with Legal Documents
 ```
@@ -117,8 +117,9 @@ curl "http://34.120.148.160/health"
 
 ### **Advanced Agents**
 4. **⚖️ Challenger Agent**: Stress-tests offers for bank profitability optimization
-5. **📜 Policy Agent**: Generates legal documents and regulatory disclosures
-6. **🗄️ MCP Server**: Provides banking policies and compliance frameworks
+5. **🧠 Arbiter Agent**: Makes final decisions balancing bank profitability vs customer value
+6. **📜 Policy Agent**: Generates legal documents and regulatory disclosures
+7. **🗄️ MCP Server**: Provides banking policies and compliance frameworks
 
 ### **Supporting Infrastructure**
 - **🏗️ Agent Development Kit (ADK)**: Standardized agent interfaces

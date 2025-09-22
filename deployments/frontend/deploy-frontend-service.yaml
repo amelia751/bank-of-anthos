@@ -15,7 +15,7 @@
 #
 # ARCHITECTURE:
 # - Frontend: Static HTML/CSS/JS served via Nginx
-# - Backend API: Connects to reliable-backend service (34.123.3.178)
+  # - Backend API: Connects to reliable-backend service (34.55.9.100)
 # - AI Agents: Risk, Terms, Perks, Challenger, Policy, MCP Server
 # - Data Sources: Bank of Anthos microservices (userservice, balancereader, etc.)
 #

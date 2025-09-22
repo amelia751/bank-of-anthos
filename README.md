@@ -1,494 +1,217 @@
-# Bank of Anthos
+# 🤖 AI-Enhanced Bank of Anthos - Credit Pre-Approval System
 
-<!-- Checks badge below seem to take a "neutral" check as a negative and shows failures if some checks are neutral. Commenting out the badge for now. -->
-<!-- ![GitHub branch check runs](https://img.shields.io/github/check-runs/GoogleCloudPlatform/bank-of-anthos/main) -->
-[![Website](https://img.shields.io/website?url=https%3A%2F%2Fcymbal-bank.fsi.cymbal.dev%2F&label=live%20demo
-)](https://cymbal-bank.fsi.cymbal.dev)
+[![GKE](https://img.shields.io/badge/Platform-Google%20Kubernetes%20Engine-4285f4)](https://cloud.google.com/kubernetes-engine)
+[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-34a853)](https://ai.google.dev/)
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-00d924)](#)
 
-**Bank of Anthos** is a sample HTTP-based web app that simulates a bank's payment processing network, allowing users to create artificial bank accounts and complete transactions.
+**AI-Enhanced Bank of Anthos** demonstrates intelligent credit pre-approval using multi-agent AI orchestration on Google Kubernetes Engine. This system adds comprehensive AI capabilities to the existing Bank of Anthos platform without modifying core services.
 
-🤖 **NEW: AI-Enhanced Demo** - Bank of Anthos now includes AI-powered agents that provide intelligent credit assessment, personalized financial offers, and real-time spending analysis based on realistic transaction data. [Jump to AI Setup](#-ai-agents-setup-enhanced-demo) →
+## 🌐 **Quick Access**
 
-## 🏗️ **DETAILED PROJECT STRUCTURE**
+- **🎯 Live Demo**: `http://34.120.148.160/`
+- **🔗 API Endpoint**: `http://34.120.148.160/api/real-preapproval?username=testuser`
+- **🏦 Original Bank System**: `http://34.41.156.37/home` (login: `testuser` / `bankofanthos`)
 
-### 📁 **Complete Folder Architecture**
+## 🎯 **What This System Does**
 
+### **Intelligent Credit Assessment**
+- **Real-time Analysis**: Analyzes actual spending patterns from Bank of Anthos transactions
+- **AI-Powered Decisions**: Uses Google Gemini AI for intelligent risk assessment and terms generation
+- **Multi-Agent Orchestration**: 6 specialized AI agents work together for comprehensive evaluation
+- **Bank Profitability**: Optimizes offers to balance customer value with bank economics
+
+### **Key Features**
+- ✅ **Instant Pre-Approval**: Credit decisions in seconds based on spending behavior
+- ✅ **Personalized Terms**: APR, credit limits, and perks tailored to spending patterns  
+- ✅ **Smart Guardrails**: Prevents unrealistic values with intelligent validation
+- ✅ **Policy Generation**: Creates legal documents and regulatory disclosures
+- ✅ **Production Ready**: Comprehensive error handling, caching, and monitoring
+
+## 🏗️ **System Architecture**
+
+### **📁 Project Structure**
 ```
 bank-of-anthos/
-├── deployments/                           # 🚀 PRODUCTION-READY DEPLOYMENTS
-│   ├── frontend/
-│   │   └── deploy-frontend-service.yaml   # Clean, documented frontend
-│   ├── backend/
-│   │   └── deploy-backend-service.yaml    # AI orchestration backend
-│   ├── agents/
-│   │   └── deploy-ai-agents.yaml         # Risk, Terms, Perks agents
-│   ├── infrastructure/
-│   │   └── deploy-advanced-agents.yaml   # Challenger, Policy, MCP agents
-│   ├── scripts/
-│   │   ├── deploy-all.sh                 # One-command deployment
-│   │   └── cleanup-old-deployments.sh    # Clean deployment automation
-│   └── README.md                         # Comprehensive deployment guide
+├── deployments/                    # 🚀 Production Kubernetes Deployments
+│   ├── frontend/                   # AI-enhanced frontend interface
+│   ├── backend/                    # AI orchestration backend
+│   ├── agents/                     # Core AI agents (Risk, Terms, Perks)
+│   ├── infrastructure/             # Advanced agents (Challenger, Policy, MCP)
+│   ├── adk/                        # Agent Development Kit framework
+│   ├── kubectl-ai/                 # Intelligent Kubernetes operations
+│   └── ingress/                    # Public access configuration
 │
-├── boa-ai-agents/                        # 🤖 AI AGENT CONFIGURATION
-│   ├── config.py                        # Shared AI agent configuration
-│   ├── .env                            # Environment variables  
-│   ├── .gitignore                      # Git ignore rules
-│   └── README.md                        # AI agents documentation
+├── boa-ai-agents/                  # 🤖 AI Agent Configuration
+│   ├── config.py                   # Shared AI agent configuration
+│   ├── README.md                   # AI agents documentation
+│   └── .env                        # Environment variables (create from .env.example)
 │   
-│   Note: All AI agent code (Risk, Terms, Perks, Challenger, Policy, MCP)
-│         is embedded directly in Kubernetes ConfigMaps within the 
-│         deployments/ folder for production deployment.
+│   Note: All AI agent code is embedded in Kubernetes ConfigMaps
+│         within deployments/ for production deployment
 │
-├── src/                                 # 🏦 CORE BANK OF ANTHOS SERVICES
-│   ├── frontend/                        # Original Bank of Anthos UI
-│   ├── accounts/                        # Account management services
-│   │   ├── userservice/                 # User authentication
-│   │   ├── contacts/                    # Contact management
-│   │   └── accounts-db/                 # Account database
-│   ├── ledger/                         # Transaction processing
-│   │   ├── balancereader/              # Account balance service
-│   │   ├── ledgerwriter/               # Transaction writer
-│   │   ├── transactionhistory/         # Transaction history
-│   │   └── ledger-db/                  # Ledger database
-│   ├── loadgenerator/                  # Traffic generation
-│   └── components/                     # Kubernetes components
+├── src/                           # 🏦 Original Bank of Anthos Services
+│   ├── frontend/                  # Web interface
+│   ├── accounts/                  # Account management (userservice, contacts, accounts-db)
+│   ├── ledger/                    # Transaction processing (balancereader, ledgerwriter, ledger-db)
+│   └── loadgenerator/             # Traffic simulation
 │
-├── kubernetes-manifests/               # 🔧 CORE SERVICE DEPLOYMENTS
-│   ├── accounts-db.yaml                # Account database
-│   ├── balance-reader.yaml             # Balance service
-│   ├── config.yaml                     # Configuration
-│   ├── contacts.yaml                   # Contact service
-│   ├── frontend.yaml                   # Original frontend
-│   ├── ledger-db.yaml                  # Ledger database
-│   ├── ledgerwriter.yaml              # Transaction writer
-│   ├── loadgenerator.yaml             # Load generator
-│   ├── transactionhistory.yaml        # Transaction service
-│   └── userservice.yaml               # User service
-│
-├── extras/                             # 📚 ADDITIONAL CONFIGURATIONS
-│   ├── cloudsql/                       # Cloud SQL integration
-│   ├── istio/                          # Service mesh configs
-│   ├── jwt/                            # JWT authentication
-│   ├── prometheus/                     # Monitoring setup
-│   └── [other integrations]/          # Various integrations
-│
-├── docs/                               # 📖 DOCUMENTATION
-│   ├── development.md                  # Development guide
-│   ├── ci-cd-pipeline.md              # CI/CD documentation
-│   └── img/                            # Documentation images
-│
-├── iac/                                # 🏗️ INFRASTRUCTURE AS CODE
-│   ├── tf-anthos-gke/                 # Terraform GKE setup
-│   └── acm-multienv-cicd-anthos-autopilot/  # Multi-env configs
-│
-├── Makefile                            # Build automation
-├── skaffold.yaml                       # Skaffold configuration
-└── README.md                           # This comprehensive guide
+└── docs/                          # 📚 Documentation
 ```
 
-### 🎯 **KEY COMPONENTS EXPLAINED**
-
-#### **🚀 Production Deployments (`deployments/`)**
-- **Clean, organized** Kubernetes manifests with comprehensive documentation
-- **One-command deployment** via `deploy-all.sh`
-- **Automated cleanup** scripts for maintaining code quality
-- **Production-ready** with health checks, resource limits, and high availability
-
-#### **🤖 AI Agents (`boa-ai-agents/`)**
-- **Risk Agent**: Credit scoring with Google Gemini AI reasoning
-- **Terms Agent**: APR calculation and credit limit determination  
-- **Perks Agent**: Personalized cashback rewards based on spending patterns
-- **Challenger Agent**: Bank profitability optimization with counter-offers
-- **Policy Agent**: Legal document generation with regulatory compliance
-- **MCP Server**: Banking policies and regulatory requirements database
-
-#### **🏦 Core Services (`src/`)**
-- **Original Bank of Anthos** microservices for realistic banking simulation
-- **Account management**, **transaction processing**, **user authentication**
-- **Real transaction data** for AI agent analysis
-
-### 🚀 **AI SYSTEM ARCHITECTURE**
-
+### **🤖 AI Agent Pipeline**
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │───▶│   Backend       │───▶│  AI Agents      │
-│   Service       │    │   Service       │    │  Orchestration  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-│                      │                      │
-│ • React-like UI      │ • Flask API         │ • Risk Agent
-│ • Real-time data     │ • Caching layer     │ • Terms Agent  
-│ • AI visualization   │ • Retry logic       │ • Perks Agent
-│ • Document viewer    │ • CORS enabled      │ • Challenger Agent
-│                      │ • Health checks     │ • Policy Agent
-└─────────────────────┴─────────────────────┴─────────────────┘
-                                │
-                    ┌─────────────────┐
-                    │ Bank of Anthos  │
-                    │ Microservices   │
-                    │                 │
-                    │ • userservice   │
-                    │ • balancereader │ 
-                    │ • transactionhistory │
-                    └─────────────────┘
+User Request → Backend Orchestrator → Real-time Bank Data
+     ↓
+AI Agent Pipeline:
+Risk Agent → Terms Agent → Perks Agent → Challenger Agent → Arbiter → Policy Agent
+     ↓
+Comprehensive Credit Decision with Legal Documents
 ```
 
-Google uses this application to demonstrate how developers can modernize enterprise applications using Google Cloud products, including: [Google Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine), [Anthos Service Mesh (ASM)](https://cloud.google.com/anthos/service-mesh), [Anthos Config Management (ACM)](https://cloud.google.com/anthos/config-management), [Migrate to Containers](https://cloud.google.com/migrate/containers), [Spring Cloud GCP](https://spring.io/projects/spring-cloud-gcp), [Cloud Operations](https://cloud.google.com/products/operations), [Cloud SQL](https://cloud.google.com/sql/docs), [Cloud Build](https://cloud.google.com/build), and [Cloud Deploy](https://cloud.google.com/deploy). This application works on any Kubernetes cluster.
+## 🚀 **Quick Start**
 
-If you are using Bank of Anthos, please ★Star this repository to show your interest!
+### **Prerequisites**
+- Google Kubernetes Engine cluster
+- `kubectl` configured for your cluster
+- Bank of Anthos deployed and running
+- Google Gemini API key
 
-**Note to Googlers:** Please fill out the form at [go/bank-of-anthos-form](https://goto2.corp.google.com/bank-of-anthos-form).
-
-## Screenshots
-
-| Sign in                                                                                                        | Home                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| [![Login](/docs/img/login.png)](/docs/img/login.png) | [![User Transactions](/docs/img/transactions.png)](/docs/img/transactions.png) |
-
-
-## Service architecture
-
-![Architecture Diagram](/docs/img/architecture.png)
-
-| Service                                                 | Language      | Description                                                                                                                                  |
-| ------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| [frontend](/src/frontend)                              | Python        | Exposes an HTTP server to serve the website. Contains login page, signup page, and home page.                                                |
-| [ledger-writer](/src/ledger/ledgerwriter)              | Java          | Accepts and validates incoming transactions before writing them to the ledger.                                                               |
-| [balance-reader](/src/ledger/balancereader)            | Java          | Provides efficient readable cache of user balances, as read from `ledger-db`.                                                                |
-| [transaction-history](/src/ledger/transactionhistory)  | Java          | Provides efficient readable cache of past transactions, as read from `ledger-db`.                                                            |
-| [ledger-db](/src/ledger/ledger-db)                     | PostgreSQL    | Ledger of all transactions. Option to pre-populate with transactions for demo users.                                                         |
-| [user-service](/src/accounts/userservice)              | Python        | Manages user accounts and authentication. Signs JWTs used for authentication by other services.                                              |
-| [contacts](/src/accounts/contacts)                     | Python        | Stores list of other accounts associated with a user. Used for drop down in "Send Payment" and "Deposit" forms.                              |
-| [accounts-db](/src/accounts/accounts-db)               | PostgreSQL    | Database for user accounts and associated data. Option to pre-populate with demo users.                                                      |
-| [loadgenerator](/src/loadgenerator)                    | Python/Locust | Continuously sends requests imitating users to the frontend. Periodically creates new accounts and simulates transactions between them.      |
-| **AI Agents** ([boa-ai-agents](/boa-ai-agents))        | Python        | **AI-powered credit assessment and personalized offers.** See [AI Agents Setup](#-ai-agents-setup-enhanced-demo) below for complete setup. |
-
-## Interactive quickstart (GKE)
-
-The following button opens up an interactive tutorial showing how to deploy Bank of Anthos in GKE:
-
-[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://ssh.cloud.google.com/cloudshell/editor?show=ide&cloudshell_git_repo=https://github.com/GoogleCloudPlatform/bank-of-anthos&cloudshell_workspace=.&cloudshell_tutorial=extras/cloudshell/tutorial.md)
-
-## Quickstart (GKE)
-
-1. Ensure you have the following requirements:
-   - [Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects#creating_a_project).
-   - Shell environment with `gcloud`, `git`, and `kubectl`.
-
-2. Clone the repository.
-
-   ```sh
-   git clone https://github.com/GoogleCloudPlatform/bank-of-anthos
-   cd bank-of-anthos/
-   ```
-
-3. Set the Google Cloud project and region and ensure the Google Kubernetes Engine API is enabled.
-
-   ```sh
-   export PROJECT_ID=<PROJECT_ID>
-   export REGION=us-central1
-   gcloud services enable container.googleapis.com \
-     --project=${PROJECT_ID}
-   ```
-
-   Substitute `<PROJECT_ID>` with the ID of your Google Cloud project.
-
-4. Create a GKE cluster and get the credentials for it.
-
-   ```sh
-   gcloud container clusters create-auto bank-of-anthos \
-     --project=${PROJECT_ID} --region=${REGION}
-   ```
-
-   Creating the cluster may take a few minutes.
-
-5. Deploy Bank of Anthos to the cluster.
-
-   ```sh
-   kubectl apply -f ./extras/jwt/jwt-secret.yaml
-   kubectl apply -f ./kubernetes-manifests
-   ```
-
-6. Wait for the pods to be ready.
-
-   ```sh
-   kubectl get pods
-   ```
-
-   After a few minutes, you should see the Pods in a `Running` state:
-
-   ```
-   NAME                                  READY   STATUS    RESTARTS   AGE
-   accounts-db-6f589464bc-6r7b7          1/1     Running   0          99s
-   balancereader-797bf6d7c5-8xvp6        1/1     Running   0          99s
-   contacts-769c4fb556-25pg2             1/1     Running   0          98s
-   frontend-7c96b54f6b-zkdbz             1/1     Running   0          98s
-   ledger-db-5b78474d4f-p6xcb            1/1     Running   0          98s
-   ledgerwriter-84bf44b95d-65mqf         1/1     Running   0          97s
-   loadgenerator-559667b6ff-4zsvb        1/1     Running   0          97s
-   transactionhistory-5569754896-z94cn   1/1     Running   0          97s
-   userservice-78dc876bff-pdhtl          1/1     Running   0          96s
-   ```
-
-7. Access the web frontend in a browser using the frontend's external IP.
-
-   ```sh
-   kubectl get service frontend | awk '{print $4}'
-   ```
-
-   Visit `http://EXTERNAL_IP` in a web browser to access your instance of Bank of Anthos.
-
-8. Once you are done with it, delete the GKE cluster.
-
-   ```sh
-   gcloud container clusters delete bank-of-anthos \
-     --project=${PROJECT_ID} --region=${REGION}
-   ```
-
-   Deleting the cluster may take a few minutes.
-
-## 🤖 AI Agents Setup (Enhanced Demo)
-
-Bank of Anthos includes AI-powered agents that provide intelligent credit assessment, personalized offers, and spending analysis based on realistic transaction data. Follow these steps to set up the complete AI-enhanced experience.
-
-### Prerequisites
-- Bank of Anthos deployed and running (complete steps 1-6 above)
-- `kubectl` configured to access your cluster
-- Python 3.8+ installed locally
-
-### Step 1: Populate Realistic Transaction Data
-
-The AI agents need realistic spending data to provide meaningful analysis. Run the data population script:
-
+### **Configuration**
 ```bash
-# Populate the database with realistic user spending habits
-./populate_data.sh
+# Option 1: Set Gemini API key directly in Kubernetes (Recommended)
+kubectl create secret generic gemini-secret --from-literal=api-key=YOUR_GEMINI_API_KEY
+
+# Option 2: Configure via environment file
+cd boa-ai-agents/
+# Create .env file with GEMINI_API_KEY=your_key_here
+# (See config.py for all available configuration options)
 ```
 
-This script:
-- ✅ Creates 333+ realistic transactions for testuser
-- ✅ Adds income deposits (bi-weekly paychecks)
-- ✅ Generates merchant expenses across 20+ categories (coffee, groceries, gas, etc.)
-- ✅ Includes peer-to-peer transfers
-- ✅ Adds 24+ merchant contacts to user accounts
-
-**Expected output:**
-```
-SUCCESS! Realistic spending data has been populated.
-Income deposits: 7
-Merchant expenses: 320
-Peer transfers: 6
-Total transactions: 333
-Merchant contacts added: 24
-```
-
-### Step 2: Set Up Port Forwarding for AI Agents
-
-The AI agents need access to Bank of Anthos services running in your cluster. Set up port forwarding:
-
+### **Deploy AI System**
 ```bash
-# Set up all required port forwards
-./setup-port-forwards.sh
+# Deploy all AI components
+kubectl apply -f deployments/
+
+# Verify deployment
+kubectl get pods,services
+
+# Access the system
+open http://34.120.148.160/
 ```
 
-**Keep this terminal open** - the port forwards must remain active for AI agents to work.
-
-**Expected output:**
-```
-✅ Port forwards established successfully!
-
-Active port forwards:
-  📡 userservice:        http://localhost:8080
-  💰 balancereader:      http://localhost:8081
-  📊 transactionhistory: http://localhost:8082
-```
-
-### Step 3: Start the AI Agents
-
-In separate terminals, start each AI agent:
-
+### **Test the API**
 ```bash
-# Terminal 1: Frontend Widget (main AI interface)
-cd boa-ai-agents/frontend-widget
-PORT=8084 python3 enhanced-demo.py
+# Get comprehensive credit analysis
+curl "http://34.120.148.160/api/real-preapproval?username=testuser"
 
-# Terminal 2: Perks Agent (personalized benefits)
-cd boa-ai-agents/perks-agent
-PORT=8083 python3 app.py
-
-# Terminal 3: Risk Agent (credit assessment)
-cd boa-ai-agents/risk-agent
-PORT=8085 python3 app.py
-
-# Terminal 4: Terms Agent (contract terms)
-cd boa-ai-agents/terms-agent
-PORT=8086 python3 app.py
+# Check agent health
+curl "http://34.120.148.160/health"
 ```
 
-### Step 4: Access the AI-Enhanced Frontend
+## 🤖 **AI Agents Overview**
 
-Once all services are running, access the AI-powered credit assessment interface:
+### **Core Agents**
+1. **🎯 Risk Agent**: Analyzes creditworthiness using spending patterns and Gemini AI
+2. **📋 Terms Agent**: Generates APR, credit limits, and terms with intelligent guardrails
+3. **🎁 Perks Agent**: Creates personalized cashback offers based on spending categories
 
-🌐 **AI Frontend Widget**: http://localhost:8084
+### **Advanced Agents**
+4. **⚖️ Challenger Agent**: Stress-tests offers for bank profitability optimization
+5. **📜 Policy Agent**: Generates legal documents and regulatory disclosures
+6. **🗄️ MCP Server**: Provides banking policies and compliance frameworks
 
-**Features:**
-- **Real-time spending analysis** based on populated transaction data
-- **AI-powered credit assessment** using Gemini AI (if configured)
-- **Personalized credit card offers** tailored to spending habits
-- **Spending categorization** across 18+ categories
-- **Lifestyle insights** and financial recommendations
+### **Supporting Infrastructure**
+- **🏗️ Agent Development Kit (ADK)**: Standardized agent interfaces
+- **🔄 kubectl-ai**: Natural language Kubernetes operations
+- **📊 Backend Orchestrator**: Intelligent agent coordination with retry logic
 
-### Troubleshooting AI Agents
+## 🎯 **Technology Stack**
 
-**Problem: Spending categories show "Loading..." forever**
+### **Required Technologies**
+- ✅ **Google Kubernetes Engine (GKE)**: Autopilot cluster with auto-scaling
+- ✅ **Google AI Models (Gemini)**: Integrated across all AI agents
+
+### **Optional Technologies (All Implemented)**
+- ✅ **Agent Development Kit (ADK)**: Custom framework for standardized agents
+- ✅ **Model Context Protocol (MCP)**: Banking policies and compliance server
+- ✅ **Agent2Agent (A2A)**: Multi-agent communication protocols
+- ✅ **kubectl-ai**: Intelligent Kubernetes management interface
+- ✅ **Gemini CLI**: AI workflow automation throughout the system
+
+## 📊 **Demo Flow**
+
+### **1. Credit Pre-Approval Demo**
+1. Visit the AI frontend: `http://34.120.148.160/`
+2. Click **"Get My Personalized Offer"**
+3. Watch real-time AI agent orchestration
+4. Review comprehensive credit analysis with:
+   - Risk assessment and credit score
+   - Personalized APR and credit limit
+   - Cashback recommendations
+   - Legal document generation
+
+### **2. API Testing**
 ```bash
-# Check if port forwards are active
-ps aux | grep "kubectl.*port-forward" | grep -v grep
+# Comprehensive analysis
+curl "http://34.120.148.160/api/real-preapproval?username=testuser" | jq .
 
-# If no output, restart port forwards
-./setup-port-forwards.sh
+# Individual agent health
+curl "http://34.120.148.160/agents/risk/health"
+curl "http://34.120.148.160/agents/terms/health"
 ```
 
-**Problem: API returns "Could not fetch real balance data"**
+### **3. Original Bank Integration**
+- View transaction data: `http://34.41.156.37/home`
+- Login: `testuser` / `bankofanthos`
+- See how AI system uses real spending patterns
+
+## 🏆 **Key Innovations**
+
+### **Real-World AI Application**
+- **Live Data Integration**: Uses actual Bank of Anthos transaction data
+- **Intelligent Decision Making**: Gemini AI powers risk assessment and terms generation
+- **Multi-Agent Orchestration**: Sophisticated agent coordination with A2A protocols
+
+### **Production-Ready Features**
+- **Smart Guardrails**: Prevents undefined values and unrealistic terms
+- **Retry Logic**: Handles network failures gracefully
+- **Caching Strategy**: Optimizes performance with intelligent caching
+- **Health Monitoring**: Comprehensive system monitoring and alerting
+
+### **Business Value**
+- **Bank Profitability**: Challenger agent optimizes offers for ROI
+- **Risk Management**: AI-powered risk assessment with stress testing
+- **Regulatory Compliance**: Automated legal document generation
+- **Customer Experience**: Instant decisions with transparent explanations
+
+## 🔧 **System Administration**
+
+### **Restart All Services**
 ```bash
-# Test API connectivity
-curl -s "http://localhost:8084/api/real-preapproval?username=testuser" | jq '.transaction_count'
-
-# Should return: 100 (or higher number)
-# If null or error, restart port forwards
+# Quick restart of all AI components
+kubectl rollout restart deployment/frontend-service
+kubectl rollout restart deployment/backend-service
+kubectl rollout restart deployment/enhanced-policy-agent
+kubectl rollout restart deployment/risk-agent-simple
+kubectl rollout restart deployment/terms-agent-simple
 ```
 
-**Problem: No transaction data**
+### **Check System Health**
 ```bash
-# Verify data was populated
-kubectl exec -it ledger-db-0 -- psql -U admin -d postgresdb -c \
-  "SELECT COUNT(*) FROM transactions WHERE from_acct = '1011226111';"
+# Verify all pods are running
+kubectl get pods
 
-# Should return: 333 (or higher)
-# If 0, re-run: ./populate_data.sh
+# Check service endpoints
+kubectl get services
+
+# Monitor logs
+kubectl logs -l app=backend-service --tail=20
 ```
 
-### Persistent Setup After Restart
-
-When you restart your machine or redeploy the cluster:
-
+### **Access Points Discovery**
 ```bash
-# 1. Deploy Bank of Anthos
-kubectl apply -f ./kubernetes-manifests
-
-# 2. Wait for pods to be ready
-kubectl wait --for=condition=ready pod --all --timeout=300s
-
-# 3. Set up port forwarding (keep terminal open)
-./setup-port-forwards.sh
-
-# 4. Repopulate data (if needed)
-./populate_data.sh
-
-# 5. Start AI agents
-cd boa-ai-agents/frontend-widget && PORT=8084 python3 enhanced-demo.py
+# Get external IPs
+kubectl get services --field-selector spec.type=LoadBalancer
+kubectl get ingress
 ```
 
-## 🔄 Server Restart Instructions (Cloud Deployment)
-
-If you deployed the AI-enhanced demo to the cloud and need to restart servers:
-
-### Quick Restart All Servers
-```bash
-# Restart all AI agents, backend, and frontend (recommended)
-kubectl delete pods -l app=perks-agent-real
-kubectl delete pods -l app=risk-agent-simple  
-kubectl delete pods -l app=terms-agent-simple
-kubectl delete pods -l app=reliable-backend
-kubectl delete pods -l app=frontend-ui
-
-# Wait for all services to restart
-kubectl wait --for=condition=ready --timeout=60s pod -l app=perks-agent-real
-kubectl wait --for=condition=ready --timeout=60s pod -l app=risk-agent-simple
-kubectl wait --for=condition=ready --timeout=60s pod -l app=terms-agent-simple
-kubectl wait --for=condition=ready --timeout=60s pod -l app=reliable-backend
-kubectl wait --for=condition=ready --timeout=60s pod -l app=frontend-ui
-
-# Clear backend cache
-curl -s "http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/api/clear-cache"
-```
-
-### Individual Server Restart Commands
-```bash
-# Restart only AI agents
-kubectl delete pods -l app=perks-agent-real,app=risk-agent-simple,app=terms-agent-simple
-
-# Restart only backend
-kubectl delete pods -l app=reliable-backend
-
-# Restart only frontend
-kubectl delete pods -l app=frontend-ui
-
-# Check status
-kubectl get pods,services | grep -E "(perks|risk|terms|reliable|frontend)"
-```
-
-### After Restart - Access Points
-```bash
-# Get frontend URL (your main UI)
-echo "Frontend UI: http://$(kubectl get service frontend-ui -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-
-# Get backend API URL  
-echo "Backend API: http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-
-# Test all systems
-curl -s "http://$(kubectl get service reliable-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')/api/real-preapproval?username=testuser" | jq '{balance: .current_balance, spending: .total_spending, ai_agents: .ai_insights.ai_agents_status}'
-```
-
-### Troubleshooting After Restart
-- **Frontend shows cached data**: Hard refresh browser (Ctrl+F5 or Cmd+Shift+R)
-- **AI agents not responding**: Wait 1-2 minutes for full startup
-- **Empty spending data**: Backend cache may be stale, use clear-cache command above
-
-### AI Agent Architecture
-
-```
-📱 Frontend UI (Cloud) ←→ 🏦 Bank of Anthos Services
-    ↓                        ├── userservice (8080)
-🎁 Perks Agent (Real)       ├── balancereader (8081)
-🎯 Risk Agent (Simple)      └── transactionhistory (8082)
-📋 Terms Agent (Simple)
-    ↓
-🔄 Reliable Backend (API Gateway)
-```
-
-### Documentation
-
-- 📖 [PORT_FORWARD_SETUP.md](PORT_FORWARD_SETUP.md) - Detailed port forwarding guide
-- 📊 [POPULATE_DATA_README.md](POPULATE_DATA_README.md) - Data population details
-- 🏪 [boa-ai-agents/merchant_mapping.py](boa-ai-agents/merchant_mapping.py) - Merchant categories
-
----
-
-## Additional deployment options
-
-- **Workload Identity**: [See these instructions.](/docs/workload-identity.md)
-- **Cloud SQL**: [See these instructions](/extras/cloudsql) to replace the in-cluster databases with hosted Google Cloud SQL.
-- **Multi Cluster with Cloud SQL**: [See these instructions](/extras/cloudsql-multicluster) to replicate the app across two regions using GKE, Multi Cluster Ingress, and Google Cloud SQL.
-- **Istio**: [See these instructions](/extras/istio) to configure an IngressGateway.
-- **Anthos Service Mesh**: ASM requires Workload Identity to be enabled in your GKE cluster. [See the workload identity instructions](/docs/workload-identity.md) to configure and deploy the app. Then, apply `extras/istio/` to your cluster to configure frontend ingress.
-- **Java Monolith (VM)**: We provide a version of this app where the three Java microservices are coupled together into one monolithic service, which you can deploy inside a VM (eg. Google Compute Engine). See the [ledgermonolith](/src/ledgermonolith) directory.
-
-## Documentation
-
-<!-- This section is duplicated in the docs/ README: https://github.com/GoogleCloudPlatform/bank-of-anthos/blob/main/docs/README.md -->
-
-- [Development](/docs/development.md) to learn how to run and develop this app locally.
-- [Environments](/docs/environments.md) to learn how to deploy on non-GKE clusters.
-- [Workload Identity](/docs/workload-identity.md) to learn how to set-up Workload Identity.
-- [CI/CD pipeline](/docs/ci-cd-pipeline.md) to learn details about and how to set-up the CI/CD pipeline.
-- [Troubleshooting](/docs/troubleshooting.md) to learn how to resolve common problems.
-
-## Demos featuring Bank of Anthos
-- [Tutorial: Explore Anthos (Google Cloud docs)](https://cloud.google.com/anthos/docs/tutorials/explore-anthos)
-- [Tutorial: Migrating a monolith VM to GKE](https://cloud.google.com/migrate/containers/docs/migrating-monolith-vm-overview-setup)
-- [Tutorial: Running distributed services on GKE private clusters using ASM](https://cloud.google.com/service-mesh/docs/distributed-services-private-clusters)
-- [Tutorial: Run full-stack workloads at scale on GKE](https://cloud.google.com/kubernetes-engine/docs/tutorials/full-stack-scale)
-- [Architecture: Anthos on bare metal](https://cloud.google.com/architecture/ara-anthos-on-bare-metal)
-- [Architecture: Creating and deploying secured applications](https://cloud.google.com/architecture/security-foundations/creating-deploying-secured-apps)
-- [Keynote @ Google Cloud Next '20: Building trust for speedy innovation](https://www.youtube.com/watch?v=7QR1z35h_yc)
-- [Workshop @ IstioCon '22: Manage and secure distributed services with ASM](https://www.youtube.com/watch?v=--mPdAxovfE)

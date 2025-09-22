@@ -1,0 +1,477 @@
+# =============================================================================
+# KUBECTL-AI INTELLIGENT KUBERNETES OPERATIONS
+# =============================================================================
+# 
+# This implements kubectl-ai integration for intelligent Kubernetes management
+# of the Bank of Anthos AI Credit System. Provides natural language interface
+# for Kubernetes operations and automated resource management.
+#
+# FEATURES:
+# - Natural language Kubernetes operations
+# - Intelligent resource scaling
+# - Automated troubleshooting
+# - Performance optimization
+# - Security compliance checks
+#
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubectl-ai-config
+  namespace: default
+  labels:
+    app: kubectl-ai
+    component: intelligent-k8s
+data:
+  kubectl-ai-wrapper.py: |
+    #!/usr/bin/env python3
+    """
+    kubectl-ai Integration for Bank of Anthos AI System
+    ===================================================
+    
+    Provides intelligent Kubernetes operations using natural language processing
+    and automated resource management.
+    """
+    
+    import os
+    import json
+    import subprocess
+    import logging
+    from flask import Flask, request, jsonify
+    from typing import Dict, List, Any, Optional
+    import google.generativeai as genai
+    
+    # ==========================================================================
+    # KUBECTL-AI INTEGRATION
+    # ==========================================================================
+    
+    class KubectlAIManager:
+        """Intelligent Kubernetes operations manager"""
+        
+        def __init__(self):
+            self.logger = logging.getLogger(__name__)
+            self.setup_gemini()
+            self.app = Flask(__name__)
+            self.setup_routes()
+            
+            # Common kubectl-ai operations for our system
+            self.system_components = [
+                "frontend-service", "backend-service", "adk-orchestrator",
+                "enhanced-risk-agent", "terms-agent-simple", "perks-agent-real",
+                "challenger-agent", "enhanced-policy-agent", "mcp-server"
+            ]
+        
+        def setup_gemini(self):
+            """Setup Gemini for intelligent command translation"""
+            api_key = os.getenv('GEMINI_API_KEY', 'your-api-key-here')
+            if api_key != 'your-api-key-here':
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel('gemini-pro')
+            else:
+                self.model = None
+                self.logger.warning("⚠️ Gemini API key not configured")
+        
+        def setup_routes(self):
+            """Setup Flask routes for kubectl-ai operations"""
+            
+            @self.app.route('/health', methods=['GET'])
+            def health():
+                return jsonify({
+                    "status": "healthy",
+                    "service": "kubectl-ai-manager",
+                    "gemini_configured": self.model is not None,
+                    "system_components": len(self.system_components)
+                })
+            
+            @self.app.route('/kubectl-ai/execute', methods=['POST'])
+            def execute_command():
+                try:
+                    data = request.json
+                    natural_command = data.get('command', '')
+                    
+                    if not natural_command:
+                        return jsonify({"error": "No command provided"}), 400
+                    
+                    # Translate natural language to kubectl command
+                    kubectl_command = self.translate_to_kubectl(natural_command)
+                    
+                    # Execute kubectl command safely
+                    result = self.execute_kubectl_safely(kubectl_command)
+                    
+                    return jsonify({
+                        "natural_command": natural_command,
+                        "kubectl_command": kubectl_command,
+                        "result": result,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    
+                except Exception as e:
+                    self.logger.error(f"❌ kubectl-ai execution error: {e}")
+                    return jsonify({"error": str(e)}), 500
+            
+            @self.app.route('/kubectl-ai/optimize', methods=['POST'])
+            def optimize_system():
+                try:
+                    optimization_result = self.optimize_ai_system()
+                    return jsonify(optimization_result)
+                except Exception as e:
+                    return jsonify({"error": str(e)}), 500
+            
+            @self.app.route('/kubectl-ai/troubleshoot', methods=['POST'])
+            def troubleshoot():
+                try:
+                    data = request.json
+                    issue = data.get('issue', 'general health check')
+                    
+                    troubleshoot_result = self.intelligent_troubleshooting(issue)
+                    return jsonify(troubleshoot_result)
+                except Exception as e:
+                    return jsonify({"error": str(e)}), 500
+        
+        def translate_to_kubectl(self, natural_command: str) -> str:
+            """Translate natural language to kubectl command using Gemini"""
+            
+            if not self.model:
+                # Fallback to basic pattern matching
+                return self.basic_command_translation(natural_command)
+            
+            try:
+                prompt = f"""
+                Translate this natural language command to a safe kubectl command for a Bank of Anthos AI system:
+                
+                Natural command: "{natural_command}"
+                
+                Available components: {', '.join(self.system_components)}
+                
+                Rules:
+                1. Only return the kubectl command, no explanations
+                2. Use safe, read-only operations unless explicitly requested
+                3. Focus on our AI system components
+                4. If destructive, add confirmation flags
+                
+                kubectl command:
+                """
+                
+                response = self.model.generate_content(prompt)
+                kubectl_cmd = response.text.strip()
+                
+                # Safety check
+                if self.is_safe_command(kubectl_cmd):
+                    return kubectl_cmd
+                else:
+                    return f"# UNSAFE COMMAND BLOCKED: {kubectl_cmd}"
+                    
+            except Exception as e:
+                self.logger.error(f"❌ Gemini translation error: {e}")
+                return self.basic_command_translation(natural_command)
+        
+        def basic_command_translation(self, natural_command: str) -> str:
+            """Basic pattern matching for common commands"""
+            cmd = natural_command.lower()
+            
+            if "status" in cmd or "health" in cmd:
+                return "kubectl get pods,services -l component in (ai-orchestration-backend,agent-development-kit)"
+            elif "logs" in cmd:
+                if "backend" in cmd:
+                    return "kubectl logs -l app=backend-service --tail=20"
+                elif "frontend" in cmd:
+                    return "kubectl logs -l app=frontend-service --tail=20"
+                else:
+                    return "kubectl logs -l component=ai-orchestration-backend --tail=10"
+            elif "restart" in cmd:
+                if "backend" in cmd:
+                    return "kubectl rollout restart deployment backend-service"
+                elif "frontend" in cmd:
+                    return "kubectl rollout restart deployment frontend-service"
+                else:
+                    return "kubectl get deployments"
+            elif "scale" in cmd:
+                return "kubectl get deployments"
+            else:
+                return "kubectl get all"
+        
+        def is_safe_command(self, command: str) -> bool:
+            """Check if kubectl command is safe to execute"""
+            dangerous_operations = ['delete', 'remove', 'destroy', 'rm']
+            return not any(op in command.lower() for op in dangerous_operations)
+        
+        def execute_kubectl_safely(self, kubectl_command: str) -> Dict[str, Any]:
+            """Execute kubectl command with safety checks"""
+            try:
+                if kubectl_command.startswith("# UNSAFE"):
+                    return {
+                        "status": "blocked",
+                        "message": "Unsafe command blocked by kubectl-ai safety system",
+                        "command": kubectl_command
+                    }
+                
+                # Execute kubectl command
+                result = subprocess.run(
+                    kubectl_command.split(),
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                return {
+                    "status": "success" if result.returncode == 0 else "error",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "return_code": result.returncode,
+                    "command": kubectl_command
+                }
+                
+            except subprocess.TimeoutExpired:
+                return {
+                    "status": "timeout",
+                    "message": "Command timed out after 30 seconds",
+                    "command": kubectl_command
+                }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": str(e),
+                    "command": kubectl_command
+                }
+        
+        def optimize_ai_system(self) -> Dict[str, Any]:
+            """Intelligent system optimization using kubectl-ai"""
+            self.logger.info("🔧 Running kubectl-ai system optimization...")
+            
+            optimization_results = {
+                "optimization_id": f"kubectl-ai-{int(time.time())}",
+                "checks_performed": [],
+                "recommendations": [],
+                "actions_taken": []
+            }
+            
+            # Check resource utilization
+            resource_check = self.execute_kubectl_safely("kubectl top pods")
+            optimization_results["checks_performed"].append("resource_utilization")
+            
+            if resource_check["status"] == "success":
+                # Analyze resource usage and provide recommendations
+                optimization_results["recommendations"].append({
+                    "type": "resource_optimization",
+                    "message": "Resource utilization checked - consider scaling if needed"
+                })
+            
+            # Check pod health
+            health_check = self.execute_kubectl_safely("kubectl get pods")
+            optimization_results["checks_performed"].append("pod_health")
+            
+            if health_check["status"] == "success":
+                if "Error" in health_check["stdout"] or "CrashLoop" in health_check["stdout"]:
+                    optimization_results["recommendations"].append({
+                        "type": "pod_health",
+                        "message": "Some pods may need attention - check logs"
+                    })
+            
+            # Check service connectivity
+            service_check = self.execute_kubectl_safely("kubectl get services")
+            optimization_results["checks_performed"].append("service_connectivity")
+            
+            self.logger.info(f"✅ Optimization completed: {len(optimization_results['checks_performed'])} checks")
+            return optimization_results
+        
+        def intelligent_troubleshooting(self, issue: str) -> Dict[str, Any]:
+            """AI-powered troubleshooting using kubectl-ai and Gemini"""
+            self.logger.info(f"🔍 kubectl-ai troubleshooting: {issue}")
+            
+            troubleshoot_result = {
+                "issue": issue,
+                "diagnosis": [],
+                "recommended_actions": [],
+                "kubectl_commands": []
+            }
+            
+            # Get system status
+            status_cmd = "kubectl get pods,services,deployments"
+            status_result = self.execute_kubectl_safely(status_cmd)
+            
+            if status_result["status"] == "success":
+                system_status = status_result["stdout"]
+                
+                # Use Gemini for intelligent diagnosis if available
+                if self.model:
+                    try:
+                        diagnosis_prompt = f"""
+                        Analyze this Kubernetes system status for a Bank of Anthos AI credit system:
+                        
+                        Issue reported: {issue}
+                        System status:
+                        {system_status}
+                        
+                        Provide:
+                        1. Diagnosis of potential issues
+                        2. Recommended kubectl commands to investigate
+                        3. Suggested fixes
+                        
+                        Focus on AI agents, microservices connectivity, and resource issues.
+                        """
+                        
+                        response = self.model.generate_content(diagnosis_prompt)
+                        ai_diagnosis = response.text
+                        
+                        troubleshoot_result["diagnosis"].append({
+                            "type": "ai_analysis",
+                            "details": ai_diagnosis
+                        })
+                        
+                    except Exception as e:
+                        self.logger.error(f"❌ Gemini diagnosis error: {e}")
+                
+                # Basic pattern-based diagnosis
+                if "Error" in system_status or "Failed" in system_status:
+                    troubleshoot_result["diagnosis"].append({
+                        "type": "pod_errors",
+                        "details": "Some pods are in error state"
+                    })
+                    troubleshoot_result["kubectl_commands"].append("kubectl describe pods")
+                
+                if "Pending" in system_status:
+                    troubleshoot_result["diagnosis"].append({
+                        "type": "resource_constraints",
+                        "details": "Some pods are pending - possible resource constraints"
+                    })
+                    troubleshoot_result["kubectl_commands"].append("kubectl describe nodes")
+            
+            return troubleshoot_result
+        
+        def run(self):
+            """Start kubectl-ai manager"""
+            self.logger.info("🚀 Starting kubectl-ai intelligent Kubernetes manager")
+            self.app.run(host='0.0.0.0', port=8080)
+    
+    if __name__ == "__main__":
+        import time
+        from datetime import datetime
+        
+        logging.basicConfig(level=logging.INFO)
+        manager = KubectlAIManager()
+        manager.run()
+
+---
+# =============================================================================
+# KUBECTL-AI DEPLOYMENT
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubectl-ai-manager
+  namespace: default
+  labels:
+    app: kubectl-ai-manager
+    component: intelligent-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubectl-ai-manager
+  template:
+    metadata:
+      labels:
+        app: kubectl-ai-manager
+        component: intelligent-k8s
+    spec:
+      serviceAccountName: kubectl-ai-service-account
+      containers:
+      - name: kubectl-ai
+        image: python:3.9-slim
+        command: ["sh", "-c"]
+        args:
+          - |
+            apt-get update && apt-get install -y curl &&
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" &&
+            chmod +x kubectl && mv kubectl /usr/local/bin/ &&
+            pip install flask google-generativeai &&
+            python /config/kubectl-ai-wrapper.py
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: kubectl-ai-config
+          mountPath: /config
+        env:
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: gemini-api-key
+              optional: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: kubectl-ai-config
+        configMap:
+          name: kubectl-ai-config
+
+---
+# =============================================================================
+# KUBECTL-AI SERVICE ACCOUNT AND RBAC
+# =============================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubectl-ai-service-account
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubectl-ai-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "describe"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "describe", "patch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubectl-ai-binding
+subjects:
+- kind: ServiceAccount
+  name: kubectl-ai-service-account
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: kubectl-ai-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubectl-ai-manager
+  namespace: default
+  labels:
+    app: kubectl-ai-manager
+    component: intelligent-k8s
+spec:
+  selector:
+    app: kubectl-ai-manager
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  type: ClusterIP

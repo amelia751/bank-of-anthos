@@ -129,16 +129,13 @@ data:
                 'analysis_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            logger.info(f"✅ Generated {len(perks)} perks for {tier} tier user")
             return jsonify(response)
             
         except Exception as e:
-            logger.error(f"❌ Error generating perks: {e}")
             return jsonify({'error': 'Failed to generate perks'}), 500
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8085))
-        logger.info(f"🚀 Starting Perks Agent on port {port}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---
@@ -332,7 +329,6 @@ data:
                 response = model.generate_content(prompt)
                 return response.text.strip()
             except Exception as e:
-                logger.warning(f"Gemini reasoning failed: {e}")
         
         # Fallback reasoning
         score = risk_data.get('score', 650)
@@ -374,11 +370,9 @@ data:
             
             risk_data = calculate_risk_score(user_id, months)
             
-            logger.info(f"✅ Risk assessment completed for {user_id}: {risk_data['tier']} tier")
             return jsonify(risk_data)
             
         except Exception as e:
-            logger.error(f"❌ Error in risk assessment: {e}")
             return jsonify({'error': 'Risk assessment failed'}), 500
     
     @app.route('/approve', methods=['POST'])
@@ -402,17 +396,13 @@ data:
                 'analysis_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            logger.info(f"✅ Approval decision for {user_id}: {approval_data['decision']}")
             return jsonify(response)
             
         except Exception as e:
-            logger.error(f"❌ Error in approval decision: {e}")
             return jsonify({'error': 'Approval decision failed'}), 500
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8087))
-        logger.info(f"🚀 Starting Enhanced Risk Agent on port {port}")
-        logger.info(f"🤖 Gemini AI: {'Available' if GEMINI_AVAILABLE else 'Not Available'}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---
@@ -507,11 +497,12 @@ data:
   app.py: |
     #!/usr/bin/env python3
     """
-    Terms Agent - Credit Card Terms and Conditions Generator
+    Terms Agent - Gemini AI-Powered Credit Terms Generator
     =====================================================
     
-    Generates appropriate credit terms including APR, credit limits,
-    and loan conditions based on risk assessment and spending patterns.
+    Generates intelligent credit terms using Gemini AI based on risk assessment,
+    spending patterns, and banking best practices. Includes comprehensive guardrails
+    to prevent undefined values and unrealistic terms.
     """
     
     import os
@@ -519,30 +510,168 @@ data:
     import logging
     from flask import Flask, request, jsonify
     from datetime import datetime
-    import random
+    import google.generativeai as genai
     
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
     app = Flask(__name__)
     
-    def generate_terms(risk_data, spending_data):
-        """Generate credit terms based on risk and spending analysis"""
+    # Initialize Gemini AI
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'your-api-key-here')
+    GEMINI_AVAILABLE = False
+    
+    if GEMINI_API_KEY and GEMINI_API_KEY != 'your-api-key-here':
+        try:
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-pro')
+            GEMINI_AVAILABLE = True
+        except Exception as e:
+            model = None
+    else:
+        model = None
+    
+    def apply_guardrails(terms):
+        """Apply comprehensive guardrails to prevent undefined/unrealistic values"""
+        # APR Guardrails
+        apr_rate = terms.get('apr_rate', 18.99)
+        if isinstance(apr_rate, str) or apr_rate is None:
+            apr_rate = 18.99
+        apr_rate = max(10.99, min(29.99, float(apr_rate)))  # Keep between 10.99% and 29.99%
+        apr_rate = round(apr_rate, 2)
+        
+        # Credit Limit Guardrails
+        credit_limit = terms.get('credit_limit', 5000)
+        if isinstance(credit_limit, str) or credit_limit is None:
+            credit_limit = 5000
+        credit_limit = max(1000, min(50000, int(credit_limit)))  # Between $1K and $50K
+        
+        # Grace Period Guardrails
+        grace_period = terms.get('grace_period_days', 25)
+        if isinstance(grace_period, str) or grace_period is None:
+            grace_period = 25
+        grace_period = max(21, min(30, int(grace_period)))  # Between 21-30 days
+        
+        # Annual Fee Guardrails
+        annual_fee = terms.get('annual_fee', 0)
+        if isinstance(annual_fee, str) or annual_fee is None:
+            annual_fee = 0
+        annual_fee = max(0, min(500, int(annual_fee)))  # Between $0 and $500
+        
+        # Other Fee Guardrails
+        late_fee = max(25, min(40, terms.get('late_fee', 35)))
+        cash_advance_fee = max(3.0, min(5.0, terms.get('cash_advance_fee', 5.0)))
+        foreign_fee = max(0, min(3.0, terms.get('foreign_transaction_fee', 2.7)))
+        min_payment = max(1.0, min(3.0, terms.get('minimum_payment_percentage', 2.0)))
+        
+        return {
+            'apr_rate': apr_rate,
+            'credit_limit': credit_limit,
+            'annual_fee': annual_fee,
+            'grace_period_days': grace_period,
+            'late_fee': late_fee,
+            'cash_advance_fee': cash_advance_fee,
+            'foreign_transaction_fee': foreign_fee,
+            'minimum_payment_percentage': min_payment,
+            'promotional_offers': terms.get('promotional_offers', [])
+        }
+    
+    def generate_terms_with_gemini(risk_data, spending_data):
+        """Generate intelligent credit terms using Gemini AI"""
+        if not GEMINI_AVAILABLE:
+            return generate_fallback_terms(risk_data, spending_data)
+        
+        try:
+            # Prepare context for Gemini
+            score = risk_data.get('score', 650)
+            tier = risk_data.get('tier', 'Standard')
+            total_spending = spending_data.get('total_spending', 1000)
+            transaction_count = spending_data.get('transaction_count', 20)
+            current_balance = spending_data.get('current_balance', 2500)
+            
+            prompt = f"""
+            As a credit risk expert for Bank of Anthos, generate appropriate credit card terms based on this customer profile:
+            
+            CUSTOMER PROFILE:
+            - Credit Score: {score}
+            - Risk Tier: {tier}
+            - Monthly Spending: ${total_spending/3:.2f} (over 3 months)
+            - Transaction Count: {transaction_count}
+            - Current Balance: ${current_balance}
+            
+            REQUIREMENTS:
+            - APR must be between 10.99% and 29.99%
+            - Credit limit between $1,000 and $50,000
+            - Grace period between 21-30 days
+            - Annual fee between $0-500
+            - Late fee between $25-40
+            - Cash advance fee between 3.0%-5.0%
+            - Foreign transaction fee between 0%-3.0%
+            - Minimum payment percentage between 1.0%-3.0%
+            
+            SCORING GUIDELINES:
+            - Excellent (750+): Lower APR (10.99-16.99%), higher limits, premium benefits
+            - Good (700-749): Moderate APR (16.99-21.99%), standard limits
+            - Fair (650-699): Higher APR (21.99-26.99%), lower limits
+            - Poor (<650): Highest APR (26.99-29.99%), minimum limits
+            
+            Return ONLY a JSON object with these exact keys:
+            {{
+                "apr_rate": 18.99,
+                "credit_limit": 15000,
+                "annual_fee": 0,
+                "grace_period_days": 25,
+                "late_fee": 35,
+                "cash_advance_fee": 5.0,
+                "foreign_transaction_fee": 2.7,
+                "minimum_payment_percentage": 2.0,
+                "promotional_offers": []
+            }}
+            """
+            
+            response = model.generate_content(prompt)
+            
+            # Parse Gemini response
+            response_text = response.text.strip()
+            if response_text.startswith('```json'):
+                response_text = response_text[7:-3]
+            elif response_text.startswith('```'):
+                response_text = response_text[3:-3]
+            
+            terms_data = json.loads(response_text)
+            
+            # Apply guardrails to Gemini-generated terms
+            safe_terms = apply_guardrails(terms_data)
+            
+            
+            return {
+                'terms': safe_terms,
+                'risk_tier': tier,
+                'credit_score_used': score,
+                'generation_method': 'gemini_ai',
+                'generation_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+        except Exception as e:
+            return generate_fallback_terms(risk_data, spending_data)
+    
+    def generate_fallback_terms(risk_data, spending_data):
+        """Generate fallback terms with deterministic logic and guardrails"""
         score = risk_data.get('score', 650)
         tier = risk_data.get('tier', 'Standard')
         total_spending = spending_data.get('total_spending', 1000)
         
-        # APR calculation based on risk
+        # Deterministic APR calculation with guardrails
         if score >= 750:
-            apr_rate = round(random.uniform(14.99, 18.99), 2)
+            apr_rate = 15.99  # Excellent credit
         elif score >= 700:
-            apr_rate = round(random.uniform(18.99, 22.99), 2)
+            apr_rate = 19.99  # Good credit
         elif score >= 650:
-            apr_rate = round(random.uniform(22.99, 26.99), 2)
+            apr_rate = 24.99  # Fair credit
         else:
-            apr_rate = round(random.uniform(26.99, 29.99), 2)
+            apr_rate = 28.99  # Poor credit
         
-        # Credit limit based on spending and score
+        # Credit limit calculation with guardrails
         spending_multiplier = min(max(total_spending / 1000, 1), 10)
         if tier == 'Gold':
             base_limit = 15000
@@ -553,8 +682,9 @@ data:
         
         credit_limit = int(base_limit * spending_multiplier)
         credit_limit = min(credit_limit, 50000)  # Cap at $50k
+        credit_limit = max(credit_limit, 1000)   # Minimum $1k
         
-        # Other terms
+        # Other terms with guardrails
         annual_fee = 0 if tier == 'Gold' else (95 if tier == 'Silver' else 0)
         grace_period = 25 if tier in ['Gold', 'Silver'] else 21
         
@@ -563,25 +693,49 @@ data:
             'credit_limit': credit_limit,
             'annual_fee': annual_fee,
             'grace_period_days': grace_period,
-            'late_fee': 39,
-            'cash_advance_fee': 5.0,  # percentage
-            'foreign_transaction_fee': 0 if tier == 'Gold' else 3.0,
+            'late_fee': 35,
+            'cash_advance_fee': 5.0,
+            'foreign_transaction_fee': 0 if tier == 'Gold' else 2.7,
             'minimum_payment_percentage': 2.0,
             'promotional_offers': [
                 {
-                    'title': f'0% APR for 12 months',
+                    'title': '0% APR for 12 months',
                     'description': 'No interest on purchases for the first year'
                 }
             ] if tier == 'Gold' else []
         }
         
+        # Apply final guardrails
+        safe_terms = apply_guardrails(terms)
+        
         return {
-            'terms': terms,
+            'terms': safe_terms,
             'risk_tier': tier,
             'credit_score_used': score,
-            'spending_analysis_factor': spending_multiplier,
+            'generation_method': 'fallback_logic',
             'generation_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
+    
+    def generate_terms(risk_data, spending_data):
+        """Main terms generation function with Gemini AI and fallback"""
+        # Input validation and guardrails
+        if not risk_data:
+            risk_data = {'score': 650, 'tier': 'Standard'}
+        if not spending_data:
+            spending_data = {'total_spending': 1000, 'transaction_count': 20}
+        
+        # Ensure required fields exist
+        risk_data.setdefault('score', 650)
+        risk_data.setdefault('tier', 'Standard')
+        spending_data.setdefault('total_spending', 1000)
+        spending_data.setdefault('transaction_count', 20)
+        spending_data.setdefault('current_balance', 2500)
+        
+        # Generate terms using Gemini AI with fallback
+        if GEMINI_AVAILABLE:
+            return generate_terms_with_gemini(risk_data, spending_data)
+        else:
+            return generate_fallback_terms(risk_data, spending_data)
     
     @app.route('/health')
     def health():
@@ -599,16 +753,13 @@ data:
             
             terms_data = generate_terms(risk_data, spending_data)
             
-            logger.info(f"✅ Generated terms: {terms_data['terms']['apr_rate']}% APR, ${terms_data['terms']['credit_limit']} limit")
             return jsonify(terms_data)
             
         except Exception as e:
-            logger.error(f"❌ Error generating terms: {e}")
             return jsonify({'error': 'Terms generation failed'}), 500
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8086))
-        logger.info(f"🚀 Starting Terms Agent on port {port}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---
@@ -637,13 +788,19 @@ spec:
       - name: terms-agent
         image: python:3.12-slim
         workingDir: /app
-        command: ["/bin/bash", "-c", "pip install flask && python app.py"]
+        command: ["/bin/bash", "-c", "pip install flask google-generativeai && python app.py"]
         ports:
         - containerPort: 8086
           name: http
         env:
         - name: PORT
           value: "8086"
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gemini-api-key
+              key: api-key
+              optional: true
         volumeMounts:
         - name: code
           mountPath: /app

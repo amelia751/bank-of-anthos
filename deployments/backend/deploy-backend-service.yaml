@@ -64,7 +64,6 @@ data:
     
     import os
     import json
-    import logging
     import requests
     import time
     import hashlib
@@ -78,11 +77,6 @@ data:
     # ==========================================================================
     # LOGGING AND APPLICATION SETUP
     # ==========================================================================
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logger = logging.getLogger(__name__)
     
     app = Flask(__name__)
     CORS(app)  # Enable CORS for frontend integration
@@ -184,7 +178,6 @@ data:
         if key in cache:
             data, timestamp = cache[key]
             if datetime.now() - timestamp < timedelta(seconds=CACHE_TTL):
-                logger.info(f"✅ Cache hit for {key}")
                 return data
             else:
                 del cache[key]
@@ -193,7 +186,6 @@ data:
     def set_cache(key, data):
         """Store data in cache with timestamp"""
         cache[key] = (data, datetime.now())
-        logger.info(f"💾 Cached response for {key}")
     
     # ==========================================================================
     # DIRECT DATABASE CONNECTION (BYPASS USERSERVICE AUTHENTICATION ISSUES)
@@ -238,11 +230,9 @@ data:
             balance = float(result[0]) / 100.0 if result and result[0] else 0.0
             
             conn.close()
-            logger.info(f"💰 Direct DB balance for {username}: ${balance:.2f}")
             return balance
             
         except Exception as e:
-            logger.error(f"❌ Direct balance query failed: {e}")
             return 0.0
     
     def get_direct_transactions(username):
@@ -275,11 +265,9 @@ data:
                 })
             
             conn.close()
-            logger.info(f"📊 Direct DB transactions for {username}: {len(transactions)} found")
             return transactions
             
         except Exception as e:
-            logger.error(f"❌ Direct transactions query failed: {e}")
             return []
     
     # ==========================================================================
@@ -297,7 +285,6 @@ data:
         
         try:
             user_data = DEMO_USERS.get(username, DEMO_USERS['testuser'])
-            logger.info(f"🔐 Authenticating user: {user_data['username']}")
             
             response = session.get(
                 f"{SERVICES['userservice']}/login",
@@ -305,7 +292,6 @@ data:
                 timeout=3
             )
             
-            logger.info(f"🔐 Auth response: {response.status_code}")
             if response.status_code == 200:
                 try:
                     auth_data = response.json()
@@ -313,17 +299,13 @@ data:
                 except:
                     token = response.text.strip()
                 
-                logger.info(f"✅ Authentication successful: {token[:20]}...")
                 set_cache(cache_key, token)
                 return token
             else:
-                logger.error(f"❌ Authentication failed: {response.status_code} - {response.text}")
                 return None
         except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Auth network error: {e}")
             return None
         except Exception as e:
-            logger.error(f"❌ Auth error: {e}")
             return None
     
     def get_balance(username):
@@ -339,7 +321,6 @@ data:
             # Get auth token from main Bank system
             token = get_auth_token(username)
             if not token:
-                logger.warning(f"⚠️ Auth failed for {username}, using direct DB fallback")
                 balance = get_direct_balance(username)
                 set_cache(cache_key, balance)
                 return balance
@@ -354,17 +335,14 @@ data:
             if response.status_code == 200:
                 data = response.json()
                 balance = data.get('balance', 0) / 100  # Convert from cents
-                logger.info(f"💰 Real-time balance from main system: ${balance}")
                 set_cache(cache_key, balance)
                 return balance
             else:
-                logger.warning(f"⚠️ Balance API error {response.status_code}, using direct DB fallback")
                 balance = get_direct_balance(username)
                 set_cache(cache_key, balance)
                 return balance
                 
         except Exception as e:
-            logger.error(f"❌ Balance fetch error: {e}, using direct DB fallback")
             balance = get_direct_balance(username)
             set_cache(cache_key, balance)
             return balance
@@ -382,7 +360,6 @@ data:
             # Get auth token from main Bank system
             token = get_auth_token(username)
             if not token:
-                logger.warning(f"⚠️ Auth failed for {username}, using direct DB fallback")
                 transactions = get_direct_transactions(username)
                 set_cache(cache_key, transactions)
                 return transactions
@@ -397,17 +374,14 @@ data:
             if response.status_code == 200:
                 data = response.json()
                 transactions = data.get('transactions', [])
-                logger.info(f"📊 Real-time transactions from main system: {len(transactions)} found")
                 set_cache(cache_key, transactions)
                 return transactions
             else:
-                logger.warning(f"⚠️ Transactions API error {response.status_code}, using direct DB fallback")
                 transactions = get_direct_transactions(username)
                 set_cache(cache_key, transactions)
                 return transactions
                 
         except Exception as e:
-            logger.error(f"❌ Transactions fetch error: {e}, using direct DB fallback")
             transactions = get_direct_transactions(username)
             set_cache(cache_key, transactions)
             return transactions
@@ -450,10 +424,8 @@ data:
                         categories['Other']['count'] += 1
                         categories['Other']['amount'] = amount
             except Exception as e:
-                logger.warning(f"⚠️ Error processing transaction: {e}")
                 continue
         
-        logger.info(f"📊 Analyzed spending: {len(categories)} categories")
         return categories
     
     # ==========================================================================
@@ -466,7 +438,6 @@ data:
         """
         try:
             if agent_name not in AI_AGENTS:
-                logger.warning(f"⚠️ Unknown AI agent: {agent_name}")
                 return None
                 
             url = f"{AI_AGENTS[agent_name]}/{endpoint}"
@@ -478,24 +449,19 @@ data:
                 
             if response.status_code == 200:
                 result = response.json()
-                logger.info(f"✅ {agent_name} agent responded successfully")
                 return result
             else:
-                logger.warning(f"❌ {agent_name} agent returned {response.status_code}")
                 return None
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"❌ {agent_name} agent network error: {e}")
             return None
         except Exception as e:
-            logger.warning(f"❌ {agent_name} agent error: {e}")
             return None
     
     def get_ai_insights(financial_data):
         """
         Orchestrate all AI agents to provide comprehensive credit insights
         """
-        logger.info("🤖 Starting AI agent orchestration...")
         
         insights = {
             'perks': None,
@@ -512,11 +478,9 @@ data:
         for agent_name in AI_AGENTS:
             health_check = call_ai_agent(agent_name, 'health', {}, timeout=3)
             insights['ai_agents_status'][agent_name] = 'healthy' if health_check else 'unavailable'
-            logger.info(f"🏥 {agent_name} agent: {insights['ai_agents_status'][agent_name]}")
         
         # STEP 1: Risk Assessment and Approval Decision
         if insights['ai_agents_status']['risk'] == 'healthy':
-            logger.info("🎯 Step 1: Risk Agent Assessment...")
             
             # Get basic risk assessment (needed by terms agent)
             risk_payload = {
@@ -526,7 +490,6 @@ data:
             risk_data = call_ai_agent('risk', 'assess', risk_payload)
             if risk_data:
                 insights['risk_assessment'] = risk_data
-                logger.info(f"📊 Risk assessment completed: {risk_data.get('tier', 'N/A')} tier")
                 
             # Get approval decision with Gemini reasoning
             approval_payload = {
@@ -536,20 +499,16 @@ data:
             approval_decision = call_ai_agent('risk', 'approve', approval_payload)
             if approval_decision:
                 insights['risk_decision'] = approval_decision
-                logger.info(f"🎯 Risk Agent Decision: {approval_decision.get('decision')} - {approval_decision.get('risk_level')}")
                 
                 # Only proceed with other agents if approved
                 if approval_decision.get('decision') not in ['REJECTED']:
                     insights['application_approved'] = True
-                    logger.info("✅ Application approved by Risk Agent - proceeding with other agents")
                 else:
                     insights['application_approved'] = False
-                    logger.info("❌ Application rejected by Risk Agent - skipping other agents")
                     return insights  # Early return for rejected applications
         
         # STEP 2: Perks Agent - Personalized Rewards
         if insights['ai_agents_status']['perks'] == 'healthy':
-            logger.info("🎁 Step 2: Perks Agent - Generating personalized rewards...")
             
             perks_payload = {
                 'user_data': {
@@ -568,11 +527,9 @@ data:
             perks_data = call_ai_agent('perks', 'generate-perks', perks_payload)
             if perks_data:
                 insights['perks'] = perks_data
-                logger.info("✅ Personalized perks generated successfully")
         
         # STEP 3: Terms Agent - Credit Terms and Conditions
         if insights['ai_agents_status']['terms'] == 'healthy':
-            logger.info("📋 Step 3: Terms Agent - Generating credit terms...")
             
             terms_payload = {
                 'risk_data': insights.get('risk_assessment', {}),
@@ -581,11 +538,9 @@ data:
             terms_data = call_ai_agent('terms', 'terms', terms_payload)
             if terms_data:
                 insights['terms'] = terms_data
-                logger.info(f"✅ Credit terms generated: {terms_data.get('terms', {}).get('apr_rate', 'N/A')}% APR")
         
         # STEP 4: Challenger Agent - Bank Profitability Optimization
         if insights['ai_agents_status'].get('challenger') == 'healthy' and insights.get('terms') and insights.get('risk_assessment'):
-            logger.info("🥊 Step 4: Challenger Agent - Optimizing for bank profitability...")
             
             challenger_payload = {
                 'terms_proposal': insights['terms'].get('terms', {}),
@@ -600,7 +555,6 @@ data:
             challenger_data = call_ai_agent('challenger', 'challenge-terms', challenger_payload)
             if challenger_data:
                 insights['challenger_analysis'] = challenger_data
-                logger.info(f"✅ Challenger analysis completed: {challenger_data.get('decision', {}).get('action', 'N/A')}")
                 
                 # STEP 5: Arbiter Decision - Final Terms Optimization
                 insights['final_decision'] = make_arbiter_decision(
@@ -608,12 +562,10 @@ data:
                     challenger_data,
                     insights['risk_assessment']
                 )
-                logger.info(f"⚖️ Arbiter decision: {insights['final_decision'].get('arbiter_decision')}")
                 
                 # STEP 6: Policy Agent - Legal Document Generation
                 if insights['final_decision'].get('arbiter_decision') in ['approve_counter_offer', 'approve_original', 'approve_original_with_monitoring', 'approve_alternative_offer']:
                     if insights['ai_agents_status'].get('policy') == 'healthy':
-                        logger.info("📜 Step 6: Policy Agent - Generating legal documents...")
                         
                         policy_payload = {
                             'final_terms': insights['final_decision'].get('final_terms', {}),
@@ -622,12 +574,10 @@ data:
                             'username': financial_data.get('username', 'testuser'),
                             'account_id': financial_data.get('account_id', 'N/A')
                         }
-                        policy_data = call_ai_agent('policy', 'generate-policy-documents', policy_payload)
+                        policy_data = call_ai_agent('policy', 'generate-policy-documents', policy_payload, timeout=30)
                         if policy_data:
                             insights['policy_documents'] = policy_data
-                            logger.info("✅ Policy documents generated successfully")
         
-        logger.info("🎉 AI agent orchestration completed successfully")
         return insights
     
     def make_arbiter_decision(original_terms, challenger_analysis, risk_assessment):
@@ -782,7 +732,6 @@ data:
             }
                 
         except Exception as e:
-            logger.error(f"❌ Error in arbiter decision: {e}")
             return {
                 'arbiter_decision': 'reject_application',
                 'final_terms': None,
@@ -844,7 +793,6 @@ data:
         Main API endpoint for AI-powered credit pre-approval
         """
         username = request.args.get('username', 'testuser')
-        logger.info(f"🚀 Starting pre-approval process for {username}")
         
         try:
             # Gather financial data from Bank of Anthos services
@@ -920,16 +868,12 @@ data:
                     'ai_insights': ai_insights
                 }
                 
-                logger.info(f"✅ Generated comprehensive response for {username}: {len(spending_categories)} categories, {len(transactions)} transactions")
                 return jsonify(response)
             else:
                 # Use fallback data if services unavailable
-                logger.warning(f"⚠️ Services unavailable, using fallback data for {username}")
                 return jsonify(get_fallback_data(username))
                 
         except Exception as e:
-            logger.error(f"❌ Error generating response: {e}")
-            logger.info(f"🔄 Using fallback data due to error for {username}")
             return jsonify(get_fallback_data(username))
     
     @app.route('/api/cache-status')
@@ -977,9 +921,6 @@ data:
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8080))
-        logger.info(f"🚀 Starting AI Credit Pre-Approval Backend Service on port {port}")
-        logger.info(f"🤖 AI Agents configured: {', '.join(AI_AGENTS.keys())}")
-        logger.info(f"🏦 Bank of Anthos services: {', '.join(SERVICES.keys())}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---

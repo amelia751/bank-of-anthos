@@ -145,7 +145,6 @@ data:
                     }
                 }
             except Exception as e:
-                logger.error(f"❌ Error calculating economics: {e}")
                 return None
         
         def stress_test(self, base_economics):
@@ -181,7 +180,6 @@ data:
         def _optimize_all_perks(self, perks_data, roe_gap, base_economics):
             """ENHANCED ALGORITHM: Intelligently optimize ALL suggested perks"""
             try:
-                logger.info(f"🎯 Starting perks optimization with {len(perks_data)} perks data items")
                 
                 optimized_rewards = {
                     'base_cashback': 1.0,  # Conservative base
@@ -191,15 +189,12 @@ data:
                 }
                 
                 if not perks_data:
-                    logger.warning("⚠️ No perks data provided to optimizer")
                     return optimized_rewards
                 
                 # Get original AI suggestions
                 original_perks = perks_data.get('perks', [])
                 original_cashback = perks_data.get('cashback_structure', {})
                 
-                logger.info(f"📊 Original perks: {len(original_perks)} items")
-                logger.info(f"💳 Original cashback categories: {len(original_cashback.get('bonus_categories', []))}")
                 
                 # STEP 1: Evaluate and optimize bonus categories
                 if original_cashback.get('bonus_categories'):
@@ -260,11 +255,9 @@ data:
                     }
                 ]
                 
-                logger.info(f"✅ Optimized {len(optimized_rewards['bonus_categories'])} bonus categories and {len(premium_perks)} premium perks")
                 return optimized_rewards
                 
             except Exception as e:
-                logger.error(f"❌ Error optimizing perks: {e}")
                 return {'base_cashback': 1.0, 'bonus_categories': []}
         
         def _generate_counter_offer(self, original_terms, base_economics, stress_results):
@@ -389,7 +382,6 @@ data:
                 return counter_offer
                 
             except Exception as e:
-                logger.error(f"❌ Error generating counter-offer: {e}")
                 return original_terms
         
         def _generate_alternative_product(self, original_terms, base_economics):
@@ -479,7 +471,6 @@ data:
                     }
                     
             except Exception as e:
-                logger.error(f"❌ Error making decision: {e}")
                 return {
                     'action': 'reject',
                     'reason': f'Decision engine error: {str(e)}',
@@ -488,7 +479,6 @@ data:
         
         def challenge_terms(self, terms_proposal, risk_assessment, spending_data, perks_data=None):
             """Main challenger logic with perks integration"""
-            logger.info("🥊 Starting challenger analysis...")
             
             try:
                 # Store perks data for use in alternative offers
@@ -520,11 +510,9 @@ data:
                     }
                 }
                 
-                logger.info(f"✅ Challenger analysis complete: {decision['action']}")
                 return response
                 
             except Exception as e:
-                logger.error(f"❌ Challenger analysis failed: {e}")
                 return {'error': f'Challenger analysis failed: {str(e)}'}
     
     # Global challenger instance
@@ -559,12 +547,10 @@ data:
             return jsonify(result)
             
         except Exception as e:
-            logger.error(f"❌ Error in challenge endpoint: {e}")
             return jsonify({'error': 'Challenge analysis failed'}), 500
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8088))
-        logger.info(f"🚀 Starting Challenger Agent on port {port}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---
@@ -692,7 +678,6 @@ data:
             if response.status_code == 200:
                 return response.json()
         except Exception as e:
-            logger.warning(f"Could not fetch banking policies: {e}")
         
         # Fallback policies
         return {
@@ -709,69 +694,148 @@ data:
             }
         }
     
+    def generate_fallback_policy_document(doc_type, final_terms, user_info):
+        """Generate comprehensive fallback documents without Gemini"""
+        apr_rate = final_terms.get('apr_rate', 19.99)
+        credit_limit = final_terms.get('credit_limit', 5000)
+        annual_fee = final_terms.get('annual_fee', 0)
+        grace_period = final_terms.get('grace_period_days', 25)
+        
+        if doc_type == 'credit_card_agreement':
+            return f"BANK OF ANTHOS CREDIT CARD AGREEMENT\\n\\nACCOUNT TERMS AND CONDITIONS\\nCredit Limit: ${credit_limit:,}\\nAPR: {apr_rate}%\\nAnnual Fee: ${annual_fee}\\nGrace Period: {grace_period} days\\n\\nThis comprehensive agreement includes all terms, conditions, fees, and regulatory disclosures required for credit card operations."
+        elif doc_type == 'terms_and_conditions':
+            return f"BANK OF ANTHOS TERMS AND CONDITIONS\\n\\nAccount management policies, cardholder responsibilities, security measures, and privacy protections.\\nCredit Limit: ${credit_limit:,}\\nAPR: {apr_rate}%"
+        elif doc_type == 'privacy_policy':
+            return "BANK OF ANTHOS PRIVACY POLICY\\n\\nInformation collection, usage, sharing policies, and customer privacy rights in accordance with banking regulations."
+        elif doc_type == 'fee_schedule':
+            return f"BANK OF ANTHOS FEE SCHEDULE\\n\\nAnnual Fee: ${annual_fee}\\nAPR: {apr_rate}%\\nLate Fee: Up to $40\\nCash Advance Fee: 5%\\nForeign Transaction Fee: 2.7%"
+        else:
+            return f"BANK OF ANTHOS {doc_type.replace('_', ' ').upper()}\\n\\nComprehensive legal document with all relevant terms, conditions, and regulatory disclosures."
+    
     def _generate_document_content(doc_type, final_terms, user_info, policies):
         """Generate comprehensive document content using Gemini AI"""
         if not GEMINI_AVAILABLE:
-            return f"[{doc_type.replace('_', ' ').title()}]\n\nThis document would contain the complete {doc_type.replace('_', ' ')} with all relevant terms and conditions."
+            # Generate comprehensive fallback document
+            return generate_fallback_policy_document(doc_type, final_terms, user_info)
         
         try:
             # Craft detailed prompts for each document type
             prompts = {
                 'credit_card_agreement': f"""
-                Generate a comprehensive Credit Card Agreement for Bank of Anthos with these terms:
-                - APR: {final_terms.get('apr_rate', 'N/A')}%
-                - Credit Limit: ${final_terms.get('credit_limit', 'N/A'):,}
+                You are a professional legal document writer for Bank of Anthos. Create a comprehensive, production-ready Credit Card Agreement that is 8-12 pages long when printed. Use the following specific terms and make this a complete legal document:
+
+                CUSTOMER TERMS:
+                - APR: {final_terms.get('apr_rate', 19.99)}%
+                - Credit Limit: ${final_terms.get('credit_limit', 5000):,}
                 - Annual Fee: ${final_terms.get('annual_fee', 0)}
                 - Grace Period: {final_terms.get('grace_period_days', 25)} days
-                
-                Include sections on:
-                1. Account terms and conditions
-                2. Interest rates and finance charges
-                3. Fees and penalties
-                4. Payment terms and grace periods
-                5. Credit limit and overlimit policies
-                6. Default and remedies
-                7. Dispute resolution procedures
-                
-                Use professional legal language appropriate for a credit card agreement.
+                - Late Fee: ${final_terms.get('late_fee', 35)}
+                - Cash Advance Fee: {final_terms.get('cash_advance_fee', 5.0)}%
+                - Foreign Transaction Fee: {final_terms.get('foreign_transaction_fee', 2.7)}%
+                - Minimum Payment: {final_terms.get('minimum_payment_percentage', 2.0)}%
+                - Penalty APR: {min(29.99, final_terms.get('apr_rate', 19.99) + 10.0)}%
+                - Over-Limit Fee: $35
+
+                TEMPLATE GUIDELINES FROM MCP SERVER:
+                Use the comprehensive structure from our banking policies database. This must be a FULL legal document with detailed explanations for each section, not just bullet points. Each section should be 1-2 paragraphs minimum with complete sentences and professional legal language.
+
+                REQUIRED SECTIONS (write each section in full detail):
+
+                1. ACCOUNT OPENING AND MANAGEMENT (detailed eligibility, application process, credit limit procedures, account activation, statement delivery methods)
+
+                2. INTEREST RATES AND FINANCE CHARGES (complete APR explanations, calculation methods, when interest accrues, grace period conditions, variable rate policies)
+
+                3. FEES AND CHARGES (comprehensive fee schedule with detailed explanations of when each fee applies, calculation methods, waiver policies)
+
+                4. PAYMENT TERMS AND POLICIES (detailed minimum payment calculations, due date policies, late payment procedures, payment allocation methods)
+
+                5. CREDIT LIMIT AND OVERLIMIT POLICIES (credit limit management, overlimit fee policies, credit line adjustment procedures)
+
+                6. DEFAULT AND REMEDIES (comprehensive default definitions, acceleration procedures, collection rights, security interests)
+
+                7. DISPUTE RESOLUTION (detailed billing error procedures, arbitration clauses, governing law, consumer protection rights)
+
+                8. REGULATORY DISCLOSURES (complete TILA, FCRA, ECOA disclosures with specific language required by law)
+
+                9. PRIVACY AND SECURITY (information collection policies, data sharing practices, security measures, customer rights)
+
+                10. ACCOUNT CHANGES AND TERMINATION (modification procedures, account closure policies, final statement procedures)
+
+                Make this document comprehensive, professional, and legally compliant. Include specific contact information, addresses, and all required legal disclaimers. This should read like a real credit card agreement from a major bank.
                 """,
                 
                 'terms_and_conditions': f"""
-                Create detailed Terms and Conditions for Bank of Anthos Credit Card:
+                You are a professional legal writer for Bank of Anthos. Create comprehensive Terms and Conditions that complement the Credit Card Agreement. This should be a detailed 4-6 page document covering operational aspects of the credit card account.
+
+                ACCOUNT DETAILS:
                 - Card Type: {final_terms.get('card_type', 'Credit Card')}
-                - Account management policies
-                - Cardholder responsibilities
-                - Security and fraud protection
-                - Privacy and data usage
-                - Modification of terms procedures
-                
-                Make it comprehensive but readable, covering all standard credit card T&C topics.
+                - Credit Limit: ${final_terms.get('credit_limit', 5000):,}
+                - APR: {final_terms.get('apr_rate', 19.99)}%
+
+                CREATE DETAILED SECTIONS FOR:
+
+                1. ACCOUNT OPENING AND ELIGIBILITY (comprehensive eligibility requirements, application procedures, identity verification, joint account policies, business account provisions)
+
+                2. CARD USAGE AND AUTHORIZATION (detailed authorized user policies, transaction authorization procedures, merchant dispute rights, international usage policies, emergency replacement procedures)
+
+                3. ACCOUNT STATEMENTS AND COMMUNICATIONS (statement delivery methods and timing, electronic communication preferences, address change requirements, account alerts, customer service contact information)
+
+                4. SECURITY AND FRAUD PROTECTION (comprehensive card security features, fraud monitoring systems, liability limits for unauthorized transactions, lost/stolen card procedures, identity theft protection)
+
+                5. REWARDS AND BENEFITS PROGRAMS (detailed rewards earning and redemption policies, bonus category terms, promotional offers, benefit coverage and exclusions, program modification rights)
+
+                6. ACCOUNT MAINTENANCE AND CHANGES (credit limit review procedures, interest rate change notifications, fee schedule updates, product conversions, account closure procedures)
+
+                Write each section with full paragraphs, detailed explanations, and professional language. Include specific procedures, timeframes, and contact information where applicable.
                 """,
                 
-                'privacy_policy': """
-                Generate a comprehensive Privacy Policy for Bank of Anthos Credit Card services covering:
-                1. Information collection and use
-                2. Data sharing with third parties
-                3. Security measures and data protection
-                4. Customer rights and choices
-                5. Cookies and tracking technologies
-                6. Contact information for privacy concerns
-                7. Updates to privacy policy procedures
-                
-                Ensure CCPA and GDPR compliance considerations are included.
+                'privacy_policy': f"""
+                You are a privacy compliance officer for Bank of Anthos. Create a comprehensive Privacy Policy that is 3-5 pages long covering all aspects of customer data handling for credit card services.
+
+                CUSTOMER CONTEXT:
+                - Account Holder: {user_info.get('username', 'testuser')}
+                - Credit Limit: ${final_terms.get('credit_limit', 5000):,}
+                - Service Type: Credit Card Account Management
+
+                CREATE COMPREHENSIVE SECTIONS FOR:
+
+                1. PERSONAL INFORMATION WE COLLECT (detailed coverage of application information including name/address/income/employment, transaction and account information, credit bureau and verification data, online and mobile banking activity, customer service interactions and communications - explain each category thoroughly)
+
+                2. HOW WE USE YOUR INFORMATION (comprehensive explanations of account opening and credit decisions, transaction processing and account management, fraud prevention and security monitoring, customer service and support, product development and marketing, legal compliance and regulatory reporting - provide specific examples and procedures)
+
+                3. INFORMATION SHARING PRACTICES (detailed coverage of service providers and business partners, credit reporting agencies, government agencies and law enforcement, joint marketing partners with consent, corporate affiliates and subsidiaries - explain when, why, and how sharing occurs with specific examples)
+
+                4. CUSTOMER PRIVACY RIGHTS (comprehensive explanation of right to limit information sharing, right to access and correct information, right to opt-out of marketing communications, right to file complaints with regulators, right to close accounts and limit future contact - include specific procedures, contact information, and timeframes)
+
+                5. SECURITY MEASURES AND PROTECTIONS (detailed coverage of physical security controls, electronic security systems, employee training and access controls, incident response and breach notification procedures, third-party security assessments - explain each measure comprehensively)
+
+                6. CONTACT INFORMATION AND PROCEDURES (comprehensive privacy officer contact information, complaint resolution procedures with specific steps, regulatory contact information, annual privacy notice delivery methods, policy update notification procedures)
+
+                7. REGULATORY COMPLIANCE (detailed CCPA, GDPR, GLBA, and other applicable privacy law compliance statements with specific customer rights and procedures)
+
+                Write this as a complete, professional privacy policy with full paragraphs, detailed procedures, specific contact information, and all required regulatory language. Include effective dates, update procedures, and compliance statements.
                 """,
                 
                 'fee_schedule': f"""
-                Create a detailed Fee Schedule for Bank of Anthos Credit Card:
+                You are a financial disclosure specialist for Bank of Anthos. Create a comprehensive Fee Schedule that is 2-3 pages long with detailed explanations.
+
+                SPECIFIC FEES FOR THIS ACCOUNT:
                 - Annual Fee: ${final_terms.get('annual_fee', 0)}
                 - Late Payment Fee: ${final_terms.get('late_fee', 39)}
-                - Cash Advance Fee: {final_terms.get('cash_advance_fee', 5)}%
-                - Foreign Transaction Fee: {final_terms.get('foreign_transaction_fee', 0)}%
-                - Overlimit Fee: $35
+                - Cash Advance Fee: {final_terms.get('cash_advance_fee', 5.0)}% (minimum $10)
+                - Foreign Transaction Fee: {final_terms.get('foreign_transaction_fee', 2.7)}%
+                - Over-Limit Fee: $35
                 - Returned Payment Fee: $39
-                - Copy of Statement Fee: $5
-                
-                Format as a clear, easy-to-read fee schedule with explanations.
+
+                CREATE COMPREHENSIVE SECTIONS:
+                1. ANNUAL FEES (detailed explanation of when charged, refund policies, waiver conditions)
+                2. TRANSACTION FEES (comprehensive coverage of cash advance, foreign transaction, wire transfer fees with examples)
+                3. PENALTY FEES (detailed late payment, over-limit, returned payment fee structures with specific amounts)
+                4. SERVICE FEES (statement copies, expedited services, research fees with detailed explanations)
+                5. FEE CALCULATION METHODS (how each fee is calculated, when assessed, dispute procedures)
+                6. REGULATORY DISCLOSURES (TILA requirements, customer rights, contact information)
+
+                Write as a complete professional fee schedule with detailed explanations, examples, and regulatory compliance.
                 """,
                 
                 'regulatory_disclosures': """
@@ -804,12 +868,10 @@ data:
             return response.text.strip()
             
         except Exception as e:
-            logger.error(f"Gemini document generation failed for {doc_type}: {e}")
             return f"[{doc_type.replace('_', ' ').title()}]\n\nThis document contains the complete {doc_type.replace('_', ' ')} with all relevant terms, conditions, and regulatory disclosures as required by law."
     
     def generate_policy_documents(final_terms, user_info, arbiter_decision):
         """Generate comprehensive policy documents"""
-        logger.info("📜 Generating comprehensive policy documents...")
         
         try:
             # Get banking policies
@@ -829,7 +891,6 @@ data:
             
             # Generate each document
             for doc_type in document_types:
-                logger.info(f"📄 Generating {doc_type}...")
                 
                 content = _generate_document_content(doc_type, final_terms, user_info, policies)
                 
@@ -862,11 +923,9 @@ data:
                 }
             }
             
-            logger.info(f"✅ Generated {len(documents)} policy documents successfully")
             return response
             
         except Exception as e:
-            logger.error(f"❌ Error generating policy documents: {e}")
             return {'error': f'Policy document generation failed: {str(e)}'}
     
     @app.route('/health')
@@ -896,13 +955,10 @@ data:
             return jsonify(result)
             
         except Exception as e:
-            logger.error(f"❌ Error in document generation endpoint: {e}")
             return jsonify({'error': 'Document generation failed'}), 500
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8090))
-        logger.info(f"🚀 Starting Enhanced Policy Agent on port {port}")
-        logger.info(f"🤖 Gemini AI: {'Available' if GEMINI_AVAILABLE else 'Not Available'}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---
@@ -1015,7 +1071,7 @@ data:
     
     app = Flask(__name__)
     
-    # Comprehensive banking policies database
+    # Comprehensive banking policies database with sample documents
     BANKING_POLICIES = {
         'credit_card_policies': {
             'minimum_age': 18,
@@ -1127,6 +1183,249 @@ data:
                 'minimum_payment_due_date': '21 days from statement date',
                 'grace_period_disclosure': 'Required if applicable'
             }
+        },
+        'sample_documents': {
+            'credit_card_agreement_template': """
+COMPREHENSIVE CREDIT CARD AGREEMENT TEMPLATE
+
+This template should include the following sections with detailed content:
+
+SECTION 1: ACCOUNT OPENING AND MANAGEMENT
+- Eligibility requirements and application process
+- Credit limit determination and adjustments
+- Account activation and card issuance procedures
+- Statement delivery and account access methods
+
+SECTION 2: INTEREST RATES AND FINANCE CHARGES
+- Annual Percentage Rates for different transaction types
+- How interest is calculated and when it begins to accrue
+- Grace period policies and conditions
+- Variable rate disclosures and change notifications
+
+SECTION 3: FEES AND CHARGES
+- Complete fee schedule with maximum amounts
+- When fees are assessed and how they are calculated
+- Fee waiver policies and customer service contact information
+- Foreign transaction and currency conversion policies
+
+SECTION 4: PAYMENT TERMS AND POLICIES
+- Minimum payment calculation methods
+- Payment due dates and processing times
+- Late payment policies and penalty rates
+- Payment allocation and crediting procedures
+
+SECTION 5: CREDIT LIMIT AND OVERLIMIT POLICIES
+- Credit limit management and review procedures
+- Overlimit fee policies and customer notifications
+- Credit line increase and decrease procedures
+- Emergency authorization policies
+
+SECTION 6: DEFAULT AND REMEDIES
+- Events that constitute default
+- Acceleration of debt and collection procedures
+- Right to offset and security interests
+- Bankruptcy and insolvency provisions
+
+SECTION 7: DISPUTE RESOLUTION
+- Billing error resolution procedures
+- Arbitration clauses and class action waivers
+- Governing law and jurisdiction
+- Consumer protection rights and limitations
+
+SECTION 8: REGULATORY DISCLOSURES
+- Truth in Lending Act (TILA) disclosures
+- Fair Credit Reporting Act (FCRA) notices
+- Equal Credit Opportunity Act (ECOA) disclosures
+- Electronic Fund Transfer Act provisions
+
+SECTION 9: PRIVACY AND SECURITY
+- Information collection and usage policies
+- Data sharing and marketing communications
+- Security measures and fraud protection
+- Customer rights and opt-out procedures
+
+SECTION 10: ACCOUNT CHANGES AND TERMINATION
+- Terms modification procedures and notifications
+- Account closure policies and procedures
+- Final statement and balance transfer options
+- Post-closure obligations and responsibilities
+            """,
+            'privacy_policy_template': """
+COMPREHENSIVE PRIVACY POLICY TEMPLATE
+
+INFORMATION COLLECTION AND USAGE PRACTICES
+
+1. PERSONAL INFORMATION WE COLLECT
+- Application information (name, address, income, employment)
+- Transaction and account information
+- Credit bureau and verification data
+- Online and mobile banking activity
+- Customer service interactions and communications
+
+2. HOW WE USE YOUR INFORMATION
+- Account opening and credit decisions
+- Transaction processing and account management
+- Fraud prevention and security monitoring
+- Customer service and support
+- Product development and marketing
+- Legal compliance and regulatory reporting
+
+3. INFORMATION SHARING PRACTICES
+- Service providers and business partners
+- Credit reporting agencies
+- Government agencies and law enforcement
+- Joint marketing partners (with your consent)
+- Corporate affiliates and subsidiaries
+
+4. CUSTOMER PRIVACY RIGHTS
+- Right to limit information sharing
+- Right to access and correct information
+- Right to opt-out of marketing communications
+- Right to file complaints with regulators
+- Right to close accounts and limit future contact
+
+5. SECURITY MEASURES AND PROTECTIONS
+- Physical security controls
+- Electronic security systems
+- Employee training and access controls
+- Incident response and breach notification
+- Third-party security assessments
+
+6. CONTACT INFORMATION AND PROCEDURES
+- Privacy officer contact information
+- Complaint resolution procedures
+- Regulatory contact information
+- Annual privacy notice delivery
+- Policy update notification procedures
+            """,
+            'terms_conditions_template': """
+COMPREHENSIVE TERMS AND CONDITIONS TEMPLATE
+
+ACCOUNT MANAGEMENT AND OPERATIONS
+
+1. ACCOUNT OPENING AND ELIGIBILITY
+- Age and residency requirements
+- Income and creditworthiness standards
+- Identity verification procedures
+- Joint account policies and responsibilities
+- Business account special provisions
+
+2. CARD USAGE AND AUTHORIZATION
+- Authorized user policies and procedures
+- Transaction authorization and processing
+- Merchant dispute and chargeback rights
+- International usage policies and fees
+- Emergency card replacement procedures
+
+3. ACCOUNT STATEMENTS AND COMMUNICATIONS
+- Statement delivery methods and timing
+- Electronic communication preferences
+- Address change notification requirements
+- Account alert and notification services
+- Customer service contact information
+
+4. SECURITY AND FRAUD PROTECTION
+- Card security features and technologies
+- Fraud monitoring and detection systems
+- Liability limits for unauthorized transactions
+- Reporting procedures for lost or stolen cards
+- Identity theft protection and resolution
+
+5. REWARDS AND BENEFITS PROGRAMS
+- Rewards earning and redemption policies
+- Bonus category terms and limitations
+- Promotional offer terms and conditions
+- Benefit coverage and exclusions
+- Program changes and termination rights
+
+6. ACCOUNT MAINTENANCE AND CHANGES
+- Credit limit review and adjustment procedures
+- Interest rate change notification requirements
+- Fee schedule updates and customer notification
+- Product conversion and upgrade options
+- Account closure and final statement procedures
+            """
+        },
+        'regulatory_templates': {
+            'tila_disclosures': """
+TRUTH IN LENDING ACT (TILA) DISCLOSURE REQUIREMENTS
+
+1. ANNUAL PERCENTAGE RATE (APR) DISCLOSURES
+- Purchase APR with specific rate and conditions
+- Cash advance APR and when it applies
+- Balance transfer APR and promotional rates
+- Penalty APR triggers and maximum rates
+- Variable rate disclosures and index information
+
+2. FEES AND CHARGES DISCLOSURES
+- Annual fee amount and when charged
+- Transaction fees (cash advance, balance transfer, foreign)
+- Penalty fees (late payment, overlimit, returned payment)
+- Other fees and charges that may apply
+- Fee waiver policies and conditions
+
+3. GRACE PERIOD AND INTEREST CALCULATIONS
+- Grace period length and conditions for purchases
+- How interest is calculated (average daily balance method)
+- When interest begins to accrue on different transaction types
+- Minimum interest charge policies
+- Interest rate change notification requirements
+
+4. PAYMENT INFORMATION
+- Minimum payment calculation method
+- Payment due date and processing procedures
+- Late payment policies and penalty assessment
+- Payment allocation among different balance types
+- Payoff timeframes and total interest calculations
+            """,
+            'fcra_notices': """
+FAIR CREDIT REPORTING ACT (FCRA) NOTICES
+
+1. CREDIT REPORT USAGE NOTICE
+- Notice that credit reports may be obtained
+- Purposes for which credit reports are used
+- Consumer rights regarding credit reports
+- Credit reporting agency contact information
+- Dispute resolution procedures
+
+2. ADVERSE ACTION NOTICES
+- Specific reasons for credit denial or unfavorable terms
+- Credit score disclosures and range information
+- Free credit report availability and procedures
+- Right to dispute inaccurate information
+- Contact information for credit reporting agencies
+
+3. RISK-BASED PRICING NOTICES
+- Credit score disclosures for approved applications
+- Explanation of terms offered based on credit information
+- Comparison to best terms available
+- Free credit report rights and procedures
+- Contact information for further questions
+            """,
+            'ecoa_disclosures': """
+EQUAL CREDIT OPPORTUNITY ACT (ECOA) DISCLOSURES
+
+1. NON-DISCRIMINATION POLICIES
+- Prohibited basis for credit decisions
+- Equal treatment regardless of protected characteristics
+- Reasonable accommodation policies
+- Language assistance and accessibility services
+- Fair lending compliance and monitoring
+
+2. ADVERSE ACTION NOTICE REQUIREMENTS
+- Specific reasons for credit denial
+- Right to receive adverse action notice
+- Appraisal notice requirements for secured credit
+- Time limits for adverse action notifications
+- Retention requirements for credit applications
+
+3. CONSUMER RIGHTS AND PROTECTIONS
+- Right to have credit applications considered individually
+- Right to have income from all sources considered
+- Right to maintain separate credit accounts
+- Right to receive information about account terms
+- Right to file complaints with regulatory agencies
+            """
         }
     }
     
@@ -1180,7 +1479,6 @@ data:
     
     if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8089))
-        logger.info(f"🚀 Starting Enhanced MCP Server on port {port}")
         app.run(host='0.0.0.0', port=port, debug=False)
 
 ---

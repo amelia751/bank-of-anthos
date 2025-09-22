@@ -43,3 +43,27 @@ INSERT INTO contacts VALUES
 ('bob', 'External Bank', '9099791699', '808889588', 'true'),
 ('eve', 'External Bank', '9099791699', '808889588', 'true')
 ON CONFLICT DO NOTHING;
+
+-- Add merchant contacts for testuser (for AI analysis)
+INSERT INTO contacts VALUES
+('testuser', 'Starbucks Coffee', '2001001001', '883745000', 'true'),
+('testuser', 'Whole Foods Market', '2001001002', '883745000', 'true'),
+('testuser', 'Amazon.com', '2001001003', '883745000', 'true'),
+('testuser', 'Shell Gas Station', '2001001004', '883745000', 'true'),
+('testuser', 'McDonald''s', '2001001005', '883745000', 'true'),
+('testuser', 'Target', '2001001006', '883745000', 'true'),
+('testuser', 'Uber', '2001001007', '883745000', 'true'),
+('testuser', 'Netflix', '2001001008', '883745000', 'true'),
+('testuser', 'Best Buy', '2001001009', '883745000', 'true'),
+('testuser', 'Chipotle Mexican Grill', '2001001010', '883745000', 'true'),
+('testuser', 'CVS Pharmacy', '2001001011', '883745000', 'true'),
+('testuser', 'Spotify', '2001001012', '883745000', 'true'),
+('testuser', 'Apple Store', '2001001013', '883745000', 'true'),
+('testuser', 'Costco Wholesale', '2001001014', '883745000', 'true'),
+('testuser', 'Planet Fitness', '2001001015', '883745000', 'true'),
+('testuser', 'Panera Bread', '2001001016', '883745000', 'true'),
+('testuser', 'Home Depot', '2001001017', '883745000', 'true'),
+('testuser', 'Safeway', '2001001018', '883745000', 'true'),
+('testuser', 'Lyft', '2001001019', '883745000', 'true'),
+('testuser', 'Adobe Creative Cloud', '2001001020', '883745000', 'true')
+ON CONFLICT DO NOTHING;

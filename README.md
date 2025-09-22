@@ -9,6 +9,129 @@
 
 🤖 **NEW: AI-Enhanced Demo** - Bank of Anthos now includes AI-powered agents that provide intelligent credit assessment, personalized financial offers, and real-time spending analysis based on realistic transaction data. [Jump to AI Setup](#-ai-agents-setup-enhanced-demo) →
 
+## 🏗️ **DETAILED PROJECT STRUCTURE**
+
+### 📁 **Complete Folder Architecture**
+
+```
+bank-of-anthos/
+├── deployments/                           # 🚀 PRODUCTION-READY DEPLOYMENTS
+│   ├── frontend/
+│   │   └── deploy-frontend-service.yaml   # Clean, documented frontend
+│   ├── backend/
+│   │   └── deploy-backend-service.yaml    # AI orchestration backend
+│   ├── agents/
+│   │   └── deploy-ai-agents.yaml         # Risk, Terms, Perks agents
+│   ├── infrastructure/
+│   │   └── deploy-advanced-agents.yaml   # Challenger, Policy, MCP agents
+│   ├── scripts/
+│   │   ├── deploy-all.sh                 # One-command deployment
+│   │   └── cleanup-old-deployments.sh    # Clean deployment automation
+│   └── README.md                         # Comprehensive deployment guide
+│
+├── boa-ai-agents/                        # 🤖 AI AGENT CONFIGURATION
+│   ├── config.py                        # Shared AI agent configuration
+│   ├── .env                            # Environment variables  
+│   ├── .gitignore                      # Git ignore rules
+│   └── README.md                        # AI agents documentation
+│   
+│   Note: All AI agent code (Risk, Terms, Perks, Challenger, Policy, MCP)
+│         is embedded directly in Kubernetes ConfigMaps within the 
+│         deployments/ folder for production deployment.
+│
+├── src/                                 # 🏦 CORE BANK OF ANTHOS SERVICES
+│   ├── frontend/                        # Original Bank of Anthos UI
+│   ├── accounts/                        # Account management services
+│   │   ├── userservice/                 # User authentication
+│   │   ├── contacts/                    # Contact management
+│   │   └── accounts-db/                 # Account database
+│   ├── ledger/                         # Transaction processing
+│   │   ├── balancereader/              # Account balance service
+│   │   ├── ledgerwriter/               # Transaction writer
+│   │   ├── transactionhistory/         # Transaction history
+│   │   └── ledger-db/                  # Ledger database
+│   ├── loadgenerator/                  # Traffic generation
+│   └── components/                     # Kubernetes components
+│
+├── kubernetes-manifests/               # 🔧 CORE SERVICE DEPLOYMENTS
+│   ├── accounts-db.yaml                # Account database
+│   ├── balance-reader.yaml             # Balance service
+│   ├── config.yaml                     # Configuration
+│   ├── contacts.yaml                   # Contact service
+│   ├── frontend.yaml                   # Original frontend
+│   ├── ledger-db.yaml                  # Ledger database
+│   ├── ledgerwriter.yaml              # Transaction writer
+│   ├── loadgenerator.yaml             # Load generator
+│   ├── transactionhistory.yaml        # Transaction service
+│   └── userservice.yaml               # User service
+│
+├── extras/                             # 📚 ADDITIONAL CONFIGURATIONS
+│   ├── cloudsql/                       # Cloud SQL integration
+│   ├── istio/                          # Service mesh configs
+│   ├── jwt/                            # JWT authentication
+│   ├── prometheus/                     # Monitoring setup
+│   └── [other integrations]/          # Various integrations
+│
+├── docs/                               # 📖 DOCUMENTATION
+│   ├── development.md                  # Development guide
+│   ├── ci-cd-pipeline.md              # CI/CD documentation
+│   └── img/                            # Documentation images
+│
+├── iac/                                # 🏗️ INFRASTRUCTURE AS CODE
+│   ├── tf-anthos-gke/                 # Terraform GKE setup
+│   └── acm-multienv-cicd-anthos-autopilot/  # Multi-env configs
+│
+├── Makefile                            # Build automation
+├── skaffold.yaml                       # Skaffold configuration
+└── README.md                           # This comprehensive guide
+```
+
+### 🎯 **KEY COMPONENTS EXPLAINED**
+
+#### **🚀 Production Deployments (`deployments/`)**
+- **Clean, organized** Kubernetes manifests with comprehensive documentation
+- **One-command deployment** via `deploy-all.sh`
+- **Automated cleanup** scripts for maintaining code quality
+- **Production-ready** with health checks, resource limits, and high availability
+
+#### **🤖 AI Agents (`boa-ai-agents/`)**
+- **Risk Agent**: Credit scoring with Google Gemini AI reasoning
+- **Terms Agent**: APR calculation and credit limit determination  
+- **Perks Agent**: Personalized cashback rewards based on spending patterns
+- **Challenger Agent**: Bank profitability optimization with counter-offers
+- **Policy Agent**: Legal document generation with regulatory compliance
+- **MCP Server**: Banking policies and regulatory requirements database
+
+#### **🏦 Core Services (`src/`)**
+- **Original Bank of Anthos** microservices for realistic banking simulation
+- **Account management**, **transaction processing**, **user authentication**
+- **Real transaction data** for AI agent analysis
+
+### 🚀 **AI SYSTEM ARCHITECTURE**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │───▶│   Backend       │───▶│  AI Agents      │
+│   Service       │    │   Service       │    │  Orchestration  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+│                      │                      │
+│ • React-like UI      │ • Flask API         │ • Risk Agent
+│ • Real-time data     │ • Caching layer     │ • Terms Agent  
+│ • AI visualization   │ • Retry logic       │ • Perks Agent
+│ • Document viewer    │ • CORS enabled      │ • Challenger Agent
+│                      │ • Health checks     │ • Policy Agent
+└─────────────────────┴─────────────────────┴─────────────────┘
+                                │
+                    ┌─────────────────┐
+                    │ Bank of Anthos  │
+                    │ Microservices   │
+                    │                 │
+                    │ • userservice   │
+                    │ • balancereader │ 
+                    │ • transactionhistory │
+                    └─────────────────┘
+```
+
 Google uses this application to demonstrate how developers can modernize enterprise applications using Google Cloud products, including: [Google Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine), [Anthos Service Mesh (ASM)](https://cloud.google.com/anthos/service-mesh), [Anthos Config Management (ACM)](https://cloud.google.com/anthos/config-management), [Migrate to Containers](https://cloud.google.com/migrate/containers), [Spring Cloud GCP](https://spring.io/projects/spring-cloud-gcp), [Cloud Operations](https://cloud.google.com/products/operations), [Cloud SQL](https://cloud.google.com/sql/docs), [Cloud Build](https://cloud.google.com/build), and [Cloud Deploy](https://cloud.google.com/deploy). This application works on any Kubernetes cluster.
 
 If you are using Bank of Anthos, please ★Star this repository to show your interest!

@@ -53,34 +53,81 @@ create_transactions() {
     PAY_PERIODS=3
     DAYS_BETWEEN_PAY=14
     SECONDS_IN_PAY_PERIOD=$(( 86400 * $DAYS_BETWEEN_PAY  ))
-    DEPOSIT_AMOUNT=250000
+    DEPOSIT_AMOUNT=375000  # $3750 biweekly = $7500/month
 
     # create a UNIX timestamp in seconds since the Epoch
     START_TIMESTAMP=$(( $(date +%s) - $(( $(($PAY_PERIODS+1)) * $SECONDS_IN_PAY_PERIOD  ))  ))
 
+    # Merchant accounts for realistic transactions
+    MERCHANTS=(
+        "2001001001:550"    # Starbucks Coffee - $5.50
+        "2001001002:6500"   # Whole Foods Market - $65.00
+        "2001001003:4200"   # Amazon.com - $42.00
+        "2001001004:4500"   # Shell Gas Station - $45.00
+        "2001001005:1200"   # McDonald's - $12.00
+        "2001001006:8500"   # Target - $85.00
+        "2001001007:1800"   # Uber - $18.00
+        "2001001008:1599"   # Netflix - $15.99
+        "2001001009:25000"  # Best Buy - $250.00
+        "2001001010:1400"   # Chipotle - $14.00
+        "2001001011:2800"   # CVS Pharmacy - $28.00
+        "2001001012:1099"   # Spotify - $10.99
+        "2001001013:12000"  # Apple Store - $120.00
+        "2001001014:15000"  # Costco - $150.00
+        "2001001015:4999"   # Planet Fitness - $49.99
+        "2001001016:1200"   # Panera Bread - $12.00
+        "2001001017:7500"   # Home Depot - $75.00
+        "2001001018:5500"   # Safeway - $55.00
+        "2001001019:2200"   # Lyft - $22.00
+        "2001001020:2999"   # Adobe Creative Cloud - $29.99
+    )
+
     for i in $(seq 1 $PAY_PERIODS); do
-        # create deposit transaction for each user
+        # create deposit transaction for each user (salary)
         for account in ${USER_ACCOUNTS[@]}; do
             add_transaction "$EXTERNAL_ACCOUNT" "$account" "$EXTERNAL_ROUTING" "$LOCAL_ROUTING_NUM" $DEPOSIT_AMOUNT $START_TIMESTAMP
         done
 
-        # create 15-20 payments between users
-        TRANSACTIONS_PER_PERIOD=$(shuf -i 15-20 -n1)
-        for p in $(seq 1 $TRANSACTIONS_PER_PERIOD); do
-            # randomly generate an amount between $10-$100
-            AMOUNT=$(shuf -i 1000-10000 -n1)
+        # Create realistic merchant transactions for testuser only
+        TESTUSER_ACCOUNT="1011226111"
+        
+        # Add 8-12 realistic merchant transactions per pay period
+        MERCHANT_TRANSACTIONS=$(shuf -i 8-12 -n1)
+        for m in $(seq 1 $MERCHANT_TRANSACTIONS); do
+            # Select random merchant
+            MERCHANT_DATA=${MERCHANTS[$RANDOM % ${#MERCHANTS[@]}]}
+            MERCHANT_ACCOUNT=$(echo $MERCHANT_DATA | cut -d':' -f1)
+            BASE_AMOUNT=$(echo $MERCHANT_DATA | cut -d':' -f2)
+            
+            # Add some variance to amount (±20%)
+            VARIANCE=$(shuf -i 80-120 -n1)
+            AMOUNT=$(( $BASE_AMOUNT * $VARIANCE / 100 ))
+            
+            # Random timestamp within the pay period
+            DAYS_OFFSET=$(shuf -i 1-13 -n1)
+            TRANSACTION_TIMESTAMP=$(( $START_TIMESTAMP + $(( 86400 * $DAYS_OFFSET )) ))
+            
+            add_transaction "$TESTUSER_ACCOUNT" "$MERCHANT_ACCOUNT" "$LOCAL_ROUTING_NUM" "$LOCAL_ROUTING_NUM" $AMOUNT $TRANSACTION_TIMESTAMP
+        done
+
+        # Add a few peer-to-peer transactions (2-3 per period)
+        P2P_TRANSACTIONS=$(shuf -i 2-3 -n1)
+        for p in $(seq 1 $P2P_TRANSACTIONS); do
+            # randomly generate an amount between $20-$150
+            AMOUNT=$(shuf -i 2000-15000 -n1)
 
             # randomly select a sender and receiver
             SENDER_ACCOUNT=${USER_ACCOUNTS[$RANDOM % ${#USER_ACCOUNTS[@]}]}
             RECIPIENT_ACCOUNT=${USER_ACCOUNTS[$RANDOM % ${#USER_ACCOUNTS[@]}]}
-            # if sender equals receiver, send to a random anonymous account
+            # if sender equals receiver, skip this transaction
             if [[ "$SENDER_ACCOUNT" == "$RECIPIENT_ACCOUNT" ]]; then
-                RECIPIENT_ACCOUNT=$(shuf -i 1000000000-9999999999 -n1)
+                continue
             fi
 
-            TIMESTAMP=$(( $START_TIMESTAMP + $(( $SECONDS_IN_PAY_PERIOD * $p / $(($TRANSACTIONS_PER_PERIOD + 1 )) )) ))
+            DAYS_OFFSET=$(shuf -i 1-13 -n1)
+            TRANSACTION_TIMESTAMP=$(( $START_TIMESTAMP + $(( 86400 * $DAYS_OFFSET )) ))
 
-            add_transaction "$SENDER_ACCOUNT" "$RECIPIENT_ACCOUNT" "$LOCAL_ROUTING_NUM" "$LOCAL_ROUTING_NUM" $AMOUNT $TIMESTAMP
+            add_transaction "$SENDER_ACCOUNT" "$RECIPIENT_ACCOUNT" "$LOCAL_ROUTING_NUM" "$LOCAL_ROUTING_NUM" $AMOUNT $TRANSACTION_TIMESTAMP
         done
 
         START_TIMESTAMP=$(( $START_TIMESTAMP + $(( $i * $SECONDS_IN_PAY_PERIOD  )) ))

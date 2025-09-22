@@ -85,6 +85,28 @@ create_accounts() {
   add_external_account "alice" "External Bank" "9099791699" "808889588"
   add_external_account "bob" "External Bank" "9099791699" "808889588"
   add_external_account "eve" "External Bank" "9099791699" "808889588"
+
+  # Add merchant contacts for testuser (for AI analysis)
+  add_external_account "testuser" "Starbucks Coffee" "2001001001" "883745000"
+  add_external_account "testuser" "Whole Foods Market" "2001001002" "883745000"
+  add_external_account "testuser" "Amazon.com" "2001001003" "883745000"
+  add_external_account "testuser" "Shell Gas Station" "2001001004" "883745000"
+  add_external_account "testuser" "McDonald's" "2001001005" "883745000"
+  add_external_account "testuser" "Target" "2001001006" "883745000"
+  add_external_account "testuser" "Uber" "2001001007" "883745000"
+  add_external_account "testuser" "Netflix" "2001001008" "883745000"
+  add_external_account "testuser" "Best Buy" "2001001009" "883745000"
+  add_external_account "testuser" "Chipotle Mexican Grill" "2001001010" "883745000"
+  add_external_account "testuser" "CVS Pharmacy" "2001001011" "883745000"
+  add_external_account "testuser" "Spotify" "2001001012" "883745000"
+  add_external_account "testuser" "Apple Store" "2001001013" "883745000"
+  add_external_account "testuser" "Costco Wholesale" "2001001014" "883745000"
+  add_external_account "testuser" "Planet Fitness" "2001001015" "883745000"
+  add_external_account "testuser" "Panera Bread" "2001001016" "883745000"
+  add_external_account "testuser" "Home Depot" "2001001017" "883745000"
+  add_external_account "testuser" "Safeway" "2001001018" "883745000"
+  add_external_account "testuser" "Lyft" "2001001019" "883745000"
+  add_external_account "testuser" "Adobe Creative Cloud" "2001001020" "883745000"
 }
 
 
